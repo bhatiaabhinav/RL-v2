@@ -81,11 +81,7 @@ class Algorithm:
 
     def pre_episode_multienv(self, env_id_nos):
         if not self.supports_multiple_envs:
-            try:
-                raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
-            except NotImplementedError as e:
-                logger.exception(f"{self.name}: Exception happened")
-                raise e
+            raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
         else:
             [agent.pre_episode_multienv() for agent in self.enabled_agents()]
 
@@ -102,11 +98,7 @@ class Algorithm:
 
     def act_multienv(self):
         if not self.supports_multiple_envs:
-            try:
-                raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
-            except NotImplementedError as e:
-                logger.exception(f"{self.name}: Exception happened")
-                raise e
+            raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
         else:
             # TODO: Check this logic. The last agent which acted might not have acted in all envs.
             actions_per_agent = [agent.act_multienv() for agent in self.enabled_agents()]
@@ -124,11 +116,7 @@ class Algorithm:
 
     def post_episode_multienv(self, env_id_nos):
         if not self.supports_multiple_envs:
-            try:
-                raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
-            except NotImplementedError as e:
-                logger.exception(f"{self.name}: Exception happened")
-                raise e
+            raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
         else:
             [agent.post_episode_multienv() for agent in self.enabled_agents()]
 

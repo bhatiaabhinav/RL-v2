@@ -88,11 +88,7 @@ class Manager:
             self.action = self.algo.act()
             logger.debug(f'action #{self.num_episode_steps}: {self.action}')
             if self.action is None:
-                try:
-                    raise RuntimeError("The algorithm returned no action. The env cannot be stepped")
-                except RuntimeError as e:
-                    logger.exception("Exception happened")
-                    raise e
+                raise RuntimeError("The algorithm returned no action. The env cannot be stepped")
             # step
             self.prev_obs = self.obs
             logger.debug('Stepping env')

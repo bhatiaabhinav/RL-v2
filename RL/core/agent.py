@@ -34,11 +34,7 @@ class Agent:
 
     def pre_episode_multienv(self, env_id_nos):
         if not self.supports_multiple_envs:
-            try:
-                raise NotImplementedError(f"Agent {self.name} does not support multiple parallel envs yet.")
-            except NotImplementedError as e:
-                logger.exception(f"{self.name}: Exception happened")
-                raise e
+            raise NotImplementedError(f"Agent {self.name} does not support multiple parallel envs yet.")
 
     def pre_act(self):
         pass
@@ -52,11 +48,7 @@ class Agent:
 
     def act_multienv(self):
         if not self.supports_multiple_envs:
-            try:
-                raise NotImplementedError(f"Agent {self.name} does not support multiple parallel envs yet.")
-            except NotImplementedError as e:
-                logger.exception(f"{self.name}: Exception happened")
-                raise e
+            raise NotImplementedError(f"Agent {self.name} does not support multiple parallel envs yet.")
 
     def post_act(self):
         pass
@@ -67,11 +59,7 @@ class Agent:
 
     def post_episode_multienv(self, env_id_nos):
         if not self.supports_multiple_envs:
-            try:
-                raise NotImplementedError(f"Agent {self.name} does not support multiple parallel envs yet.")
-            except NotImplementedError as e:
-                logger.exception(f"{self.name}: Exception happened")
-                raise e
+            raise NotImplementedError(f"Agent {self.name} does not support multiple parallel envs yet.")
 
     def pre_close(self):
         pass

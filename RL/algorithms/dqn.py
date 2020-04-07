@@ -90,5 +90,5 @@ register_algo('DQN', DQN)
 
 # Standard Scripts:
 '''
-python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --overwrite --nsteps=3 --ep_anneal_steps=10000
+python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --nsteps=3 --ep_anneal_steps=10000
 '''
