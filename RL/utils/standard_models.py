@@ -41,7 +41,7 @@ class FFModel(nn.Module):
                 x = torch.relu(x)
         if len(self.conv_layers) > 0:
             x = x.view(x.size(0), -1)
-        for hidden_layer in self.hidden_layers:
+        for hidden_layer in self.linear_layers:
             x = hidden_layer(x)
             layers_remaining -= 1
             if layers_remaining > 0:

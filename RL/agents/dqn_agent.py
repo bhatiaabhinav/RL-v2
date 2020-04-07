@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class DQNModel(FFModel):
     def __init__(self, input_shape, convs, hidden_layers, n_actions):
-        super().__init__(input_shape, convs, hidden_layers, n_actions)
+        super().__init__(input_shape, convs, list(hidden_layers) + [n_actions])
 
 
 class DQNCoreAgent(RL.Agent):
