@@ -12,6 +12,7 @@ from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
+from RL.wrappers.perception_wrapper import PerceptionWrapper  # noqa
 
 from .standard_wrap_algo import StandardEnvWrapAlgo
 
@@ -46,24 +47,33 @@ p.add_argument('--no_ignore_done_on_timelimit', action='store_true')
 class DQN(StandardEnvWrapAlgo):
     def wrap_env(self, env):
         env = super().wrap_env(env)
+        # env = PerceptionWrapper(
+        #     env, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [], 20000, 512, 4, 32)
         return env
 
     def setup(self):
         args = p.parse_args()
         self.register_agent(SeedingAgent("SeedingAgent", self, args.seed))
-        self.register_agent(RewardScalingAgent("RewardScaler", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling))
+        self.register_agent(RewardScalingAgent(
+            "RewardScaler", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling))
 
-        exploit_controller = self.register_agent(ExploitControlAgent('ExploitController', self, args.eval_mode, args.min_explore_steps, args.exploit_freq))  # type: ExploitControlAgent
+        exploit_controller = self.register_agent(ExploitControlAgent(
+            'ExploitController', self, args.eval_mode, args.min_explore_steps, args.exploit_freq))  # type: ExploitControlAgent
 
-        exp_buff_agent = self.register_agent(ExperienceBufferAgent("ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
+        exp_buff_agent = self.register_agent(ExperienceBufferAgent(
+            "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
-        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [(16, 8, 4), (32, 4, 2), (32, 3, 1)], [64, 32], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps, args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer))  # type: DQNCoreAgent
+        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [512], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
+                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer))  # type: DQNCoreAgent
 
-        self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent, 'epsilon', args.min_explore_steps, 1, args.ep, args.ep_anneal_steps))
+        self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
+                                                 'epsilon', args.min_explore_steps, 1, args.ep, args.ep_anneal_steps))
 
-        self.register_agent(ModelCopyAgent('TargetNetCopier', self, dqn_core_agent.q, dqn_core_agent.target_q, args.target_q_freq, args.target_q_tau, args.min_explore_steps))
+        self.register_agent(ModelCopyAgent('TargetNetCopier', self, dqn_core_agent.q,
+                                           dqn_core_agent.target_q, args.target_q_freq, args.target_q_tau, args.min_explore_steps))
 
-        stats_agent = self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled, gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=args.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
+        stats_agent = self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
+                                                              gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=args.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
 
         self.register_agent(ConsolePrintAgent("ConsolePrinter", self, lambda: {
             'Steps': self.manager.num_steps,
@@ -90,5 +100,9 @@ register_algo('DQN', DQN)
 
 # Standard Scripts:
 '''
-python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --nsteps=3 --ep_anneal_steps=10000
+python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --nsteps=3 --ep_anneal_steps=10000 --no_render
+'''
+
+'''
+python -m RL BreakoutNoFrameskip-v4 DQN 1000000 --algo_suffix=nsteps3_f4_big --seed=0 --nsteps=3 --train_freq=4 --no_render --video_internval=100
 '''
