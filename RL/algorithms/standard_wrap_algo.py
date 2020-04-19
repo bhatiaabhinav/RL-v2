@@ -1,7 +1,8 @@
 import logging
+import os.path as osp
 
 import gym
-from gym.wrappers import AtariPreprocessing, FrameStack, TimeLimit
+from gym.wrappers import AtariPreprocessing, FrameStack, Monitor, TimeLimit
 
 import RL
 from RL import argparser as p
@@ -18,6 +19,9 @@ p.add_argument('--atari_frameskip', default=4, type=int)
 p.add_argument('--atari_framestack', default=4, type=int)
 p.add_argument('--atari_episodic_life', action='store_true')
 p.add_argument('--atari_clip_rewards', action='store_true')
+p.add_argument('--no_monitor', action='store_true')
+p.add_argument('--monitor_video_freq', default=None, type=int)
+p.add_argument('--eval_mode', action='store_true')
 
 
 class StandardEnvWrapAlgo(RL.Algorithm):
@@ -25,12 +29,16 @@ class StandardEnvWrapAlgo(RL.Algorithm):
         global logger
         logger = logging.getLogger(__name__)
         args = p.parse_args()
+        if not args.no_monitor:
+            env = Monitor(env, osp.join(
+                self.manager.logdir, 'openai_monitor'), video_callable=None if args.monitor_video_freq is None else lambda ep_id: ep_id % args.monitor_video_freq == 0, force=True, mode='evaluation' if args.eval_mode else 'training')
         if isinstance(env.observation_space, gym.spaces.Box) and len(env.observation_space.shape) >= 2 and '-v4' in self.manager.env_id:
             logger.info('Atari env detected')
             logger.info('Wrapping with Fire Reset')
             env = FireResetEnv(env)
             logger.info('Wrapping with AtariPreprocessing')
-            env = AtariPreprocessing(env, noop_max=args.atari_noop_max, frame_skip=args.atari_frameskip, terminal_on_life_loss=args.atari_episodic_life)
+            env = AtariPreprocessing(env, noop_max=args.atari_noop_max,
+                                     frame_skip=args.atari_frameskip, terminal_on_life_loss=args.atari_episodic_life)
             logger.info('Wrapping with Framestack')
             env = FrameStack(env, args.atari_framestack)
             if args.atari_clip_rewards:

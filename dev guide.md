@@ -65,3 +65,11 @@ Todo:
 - [X] Printing basics to console? An agent or hard coded?
 - [] Parallel envs code might not be done properly in core yet.
 - [] All the TODO tags in the code
+
+
+Housekeeping:
+- [X] Video Record Unwrapped - can couple with renderer .. or monitor?
+  - Let's do monitor because can upload monitor logs to gym site then. Also, manager records the stats of the wrapped env. Might need standardized (by openai) raw stats of unwrapped env.
+- [ ] Video Record Obs
+  - how? 
+- [ ] Other Wrappers can record as required
