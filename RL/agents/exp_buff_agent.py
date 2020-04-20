@@ -133,7 +133,8 @@ class ExperienceBufferAgent(RL.Agent):
                 length=self.buffer_length)
         self.nstep_buffer = []  # type: List[Experience]
         if hasattr(self.env.spec, 'max_episode_steps') and self.env.spec.max_episode_steps and ignore_done_on_timelimit:
-            logging.getLogger(__name__).warn("{0}: This is a timelimit environment. Done signal will be ignored if either TimeLimit.truncated info is provided or if not provided, then if length of episode is same as env.spec.max_episode_steps. Set --no_ignore_done_on_timelimit flag to disable this behavior.".format(self.name))
+            logging.getLogger(__name__).warn(
+                "{0}: This is a timelimit environment. Done signal will be ignored if either TimeLimit.truncated info is provided or if not provided, then if length of episode is same as env.spec.max_episode_steps. Set --no_ignore_done_on_timelimit flag to disable this behavior.".format(self.name))
             self.ignore_done_on_timelimit = True
         else:
             self.ignore_done_on_timelimit = False
@@ -168,10 +169,13 @@ class ExperienceBufferAgent(RL.Agent):
             elif self.manager.num_episode_steps == self.env.spec.max_episode_steps:
                 done = False
             if not done:
-                logger.debug('Done happened due to timelimit so recorded as false')
+                logger.debug(
+                    'Done happened due to timelimit so recorded as false')
         return done
 
     def post_act(self):
-        exp = Experience(self.manager.prev_obs, self.manager.action, self.manager.reward, self.get_done(), self.manager.info, self.manager.obs, cost=self.manager.cost)
+        exp = Experience(self.manager.prev_obs, self.manager.action, self.manager.reward,
+                         self.get_done(), self.manager.info, self.manager.obs, cost=self.manager.cost)
         self.add_to_experience_buffer(exp)
-        logger.debug(f'{self.name}: Added an exp to replay buff. Count={self.experience_buffer.count}')
+        logger.debug(
+            f'{self.name}: Added an exp to replay buff. Count={self.experience_buffer.count}')

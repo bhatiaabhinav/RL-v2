@@ -42,6 +42,7 @@ p.add_argument('--double_dqn', action='store_true')
 p.add_argument('--td_clip', type=float, default=None)
 p.add_argument('--grad_clip', type=float, default=None)
 p.add_argument('--no_ignore_done_on_timelimit', action='store_true')
+p.add_argument('--death_cost', type=float, default=0)
 
 
 class DQN(StandardEnvWrapAlgo):
@@ -64,7 +65,7 @@ class DQN(StandardEnvWrapAlgo):
             "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
         dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [512], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
-                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer))  # type: DQNCoreAgent
+                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer, args.death_cost))  # type: DQNCoreAgent
 
         self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
                                                  'epsilon', args.min_explore_steps, 1, args.ep, args.ep_anneal_steps))
@@ -104,5 +105,5 @@ python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --nsteps=3 --ep_a
 '''
 
 '''
-python -m RL BreakoutNoFrameskip-v4 DQN 1000000 --algo_suffix=nsteps3_f4_big --seed=0 --nsteps=3 --train_freq=4 --no_render --video_internval=100
+python -m RL BreakoutNoFrameskip-v4 DQN 1000000 --algo_suffix=nsteps3_f4_big --seed=0 --nsteps=3 --train_freq=4 --no_render --monitor_video_freq=100
 '''
