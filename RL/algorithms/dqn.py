@@ -1,4 +1,7 @@
+import os.path as osp
+
 import numpy as np
+from gym.wrappers import Monitor
 
 from RL import argparser as p
 from RL import register_algo
@@ -14,7 +17,8 @@ from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
 from RL.wrappers.perception_wrapper import PerceptionWrapper  # noqa
 
-from .standard_wrap_algo import StandardEnvWrapAlgo
+from .standard_wrap_algo import (StandardEnvWrapAlgo,
+                                 capped_quadratic_video_schedule)
 
 p.add_argument('--seed', default=None, type=int)
 p.add_argument('--reward_scaling', default=1, type=float)
@@ -43,13 +47,19 @@ p.add_argument('--td_clip', type=float, default=None)
 p.add_argument('--grad_clip', type=float, default=None)
 p.add_argument('--no_ignore_done_on_timelimit', action='store_true')
 p.add_argument('--death_cost', type=float, default=0)
+p.add_argument('--perception_wrap', action='store_true')
 
 
 class DQN(StandardEnvWrapAlgo):
     def wrap_env(self, env):
         env = super().wrap_env(env)
-        # env = PerceptionWrapper(
-        #     env, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [], 20000, 512, 4, 32)
+        args = p.parse_args()
+        if args.perception_wrap:
+            env = PerceptionWrapper(
+                env, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [], 20000, 512, 4, 32)
+            if not args.no_monitor:
+                env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
+                    ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
         return env
 
     def setup(self):
