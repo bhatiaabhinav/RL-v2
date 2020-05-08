@@ -1,30 +1,34 @@
 import numpy as np
 
 
-def conv2d_size_out(size, kernel, stride):
-    return (size - (kernel - 1) - 1) // stride + 1
+def conv2d_size_out(size, kernel, stride, padding):
+    return (size + 2 * padding - (kernel - 1) - 1) // stride + 1
 
 
 def convT2d_size_out(size, kernel, stride, padding=0, dilation=1):
     return (size - 1) * stride - 2 * padding + dilation * (kernel - 1) + 1
 
 
-def conv2d_shape_out(shape, channels, kernel, stride):
+def conv2d_shape_out(shape, channels, kernel, stride, padding):
     '''shape in c, h, w format'''
     if not hasattr(kernel, '__len__'):
         kernel = (kernel, kernel)
     if not hasattr(stride, '__len__'):
         stride = (stride, stride)
-    return channels, conv2d_size_out(shape[1], kernel[0], stride[0]), conv2d_size_out(shape[2], kernel[1], stride[1])
+    if not hasattr(padding, '__len__'):
+        padding = (padding, padding)
+    return channels, conv2d_size_out(shape[1], kernel[0], stride[0], padding[0]), conv2d_size_out(shape[2], kernel[1], stride[1], padding[1])
 
 
-def convT2d_shape_out(shape, channels, kernel, stride):
+def convT2d_shape_out(shape, channels, kernel, stride, padding):
     '''shape in c, h, w format'''
     if not hasattr(kernel, '__len__'):
         kernel = (kernel, kernel)
     if not hasattr(stride, '__len__'):
         stride = (stride, stride)
-    return channels, convT2d_size_out(shape[1], kernel[0], stride[0]), convT2d_size_out(shape[2], kernel[1], stride[1])
+    if not hasattr(padding, '__len__'):
+        padding = (padding, padding)
+    return channels, convT2d_size_out(shape[1], kernel[0], stride[0], padding[0]), convT2d_size_out(shape[2], kernel[1], stride[1], padding[1])
 
 
 def toNpFloat32(x, expand_dims=False):

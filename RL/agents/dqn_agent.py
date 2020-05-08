@@ -21,7 +21,7 @@ class DQNModel(FFModel):
 
 
 class DQNCoreAgent(RL.Agent):
-    def __init__(self, name, algo, convs, hidden_layers, train_freq, mb_size, double_dqn, gamma, nsteps, td_clip, grad_clip, lr, epsilon, should_exploit_fn, eval_mode, no_train_for_steps, exp_buffer: ExperienceBuffer, death_cost=1):
+    def __init__(self, name, algo, convs, hidden_layers, train_freq, mb_size, double_dqn, gamma, nsteps, td_clip, grad_clip, lr, epsilon, should_exploit_fn, eval_mode, no_train_for_steps, exp_buffer: ExperienceBuffer, policy_temperature=0, death_cost=0):
         super().__init__(name, algo, supports_multiple_envs=False)
         self.convs = convs
         self.hidden_layers = hidden_layers
@@ -38,11 +38,13 @@ class DQNCoreAgent(RL.Agent):
         self.epsilon = epsilon
         self.should_exploit_fn = should_exploit_fn
         self.death_cost = death_cost
+        self.ptemp = policy_temperature
 
         logger.info(f'Creating main network on device {device}')
         self.q = DQNModel(self.env.observation_space.shape,
                           convs, hidden_layers, self.env.action_space.n)
         self.q.to(device)
+        logger.info(str(self.q))
         if not eval_mode:
             logger.info(f'Creating target network on device {device}')
             self.target_q = DQNModel(
@@ -51,14 +53,29 @@ class DQNCoreAgent(RL.Agent):
             logger.info(f'Creating optimizer (lr={lr})')
             self.optim = optim.Adam(self.q.parameters(), lr=self.lr)
 
+    def pi(self, q, alpha=0):
+        alpha = max(alpha, 1e-8)
+        q_max, q_argmax = torch.max(q, dim=-1, keepdim=True)
+        q = q - q_max
+        q /= alpha
+        exp_q = torch.exp(q)
+        sum_exp_q = torch.sum(exp_q, dim=-1, keepdim=True)
+        p = exp_q / sum_exp_q
+        return p
+
+    def action(self, q, alpha=0):
+        p = self.pi(q, alpha=alpha)
+        a = torch.multinomial(p, num_samples=1, replacement=True)[:, 0]
+        return a
+
     def act(self):
         with torch.no_grad():
             obs = torch.from_numpy(toNpFloat32(
                 self.manager.obs, True)).to(device)
-            q = self.q(obs).cpu().detach().numpy()[0]
-        logger.debug(f'q_values: {q}')
-        logger.debug(f'highest_q: {np.max(q)}')
-        greedy_a = np.argmax(q)
+            q = self.q(obs)
+            greedy_a = torch.argmax(q, dim=-1).cpu().detach().numpy()[0]
+            a = self.action(q, alpha=self.ptemp).cpu().detach().numpy()[0]
+            logger.debug(f'q_values: {q}')
 
         if self.should_exploit_fn():
             logger.debug('Exploit mode action')
@@ -68,8 +85,8 @@ class DQNCoreAgent(RL.Agent):
                 logger.debug('Random action')
                 return self.env.action_space.sample()
             else:
-                logger.debug('Greedy action')
-                return greedy_a
+                logger.debug('Soft greedy action')
+                return a
 
     def loss(self, states, desired_q):
         return F.smooth_l1_loss(self.q(states), desired_q)
@@ -83,25 +100,32 @@ class DQNCoreAgent(RL.Agent):
                 states = torch.from_numpy(toNpFloat32(states)).to(device)
                 next_states = torch.from_numpy(
                     toNpFloat32(next_states)).to(device)
-                all_rows = np.arange(self.mb_size)
-                next_target_q = self.target_q(
-                    next_states).cpu().detach().numpy()
+                next_target_q = self.target_q(next_states)
                 if self.double_dqn:
-                    next_actions = np.argmax(
-                        self.q(next_states).cpu().detach().numpy(), axis=1)
-                    next_target_v = next_target_q[all_rows, next_actions]
+                    next_q = self.q(next_states)
+                    next_pi = self.pi(next_q, self.ptemp)
+                    next_logpi = torch.log(next_pi + 1e-20)
+                    next_target_v = torch.sum(
+                        next_pi * (next_target_q - next_logpi), dim=-1)
                 else:
-                    next_target_v = np.max(next_target_q, axis=1)
-                desired_v = rewards + \
-                    (1 - dones.astype(np.int)) * \
-                    (self.gamma ** self.nsteps) * next_target_v - \
+                    next_target_pi = self.pi(next_target_q, self.ptemp)
+                    next_target_logpi = torch.log(next_target_pi + 1e-20)
+                    next_target_v = torch.sum(
+                        next_target_pi * (next_target_q - next_target_logpi), dim=-1)
+                next_target_v = next_target_v.cpu().detach().numpy()
+                desired_v = rewards + (1 - dones.astype(np.int)) * (self.gamma ** self.nsteps) * \
+                    next_target_v - \
                     dones.astype(np.int) * (self.death_cost)  # penalize death
-                q = self.q(states).cpu().detach().numpy()
-                td_errors = desired_v - q[all_rows, actions]
+                q = self.q(states)
+                v = torch.sum(self.pi(q, self.ptemp) * q,
+                              dim=-1).cpu().detach().numpy()
+                q = q.cpu().detach().numpy()
+                all_states_idx = np.arange(self.mb_size)
+                td_errors = desired_v - q[all_states_idx, actions]
                 if self.td_clip is not None:
                     logger.debug('Doing TD error clipping')
                     td_errors = np.clip(td_errors, -self.td_clip, self.td_clip)
-                q[all_rows, actions] = q[all_rows, actions] + \
+                q[all_states_idx, actions] = q[all_states_idx, actions] + \
                     td_errors  # this is now desired_q
 
             self.optim.zero_grad()
@@ -117,4 +141,4 @@ class DQNCoreAgent(RL.Agent):
             logger.debug(f'Stepped. Loss={loss}')
             recorder = self.algo.get_agent_by_type(StatsRecordingAgent)
             recorder.record_kvstat('loss', loss)
-            recorder.record_kvstat('mb_v', np.mean(q[all_rows, actions]))
+            recorder.record_kvstat('mb_v', np.mean(v))

@@ -47,6 +47,7 @@ p.add_argument('--td_clip', type=float, default=None)
 p.add_argument('--grad_clip', type=float, default=None)
 p.add_argument('--no_ignore_done_on_timelimit', action='store_true')
 p.add_argument('--death_cost', type=float, default=0)
+p.add_argument('--dqn_ptemp', type=float, default=0)
 p.add_argument('--perception_wrap', action='store_true')
 
 
@@ -56,7 +57,7 @@ class DQN(StandardEnvWrapAlgo):
         args = p.parse_args()
         if args.perception_wrap:
             env = PerceptionWrapper(
-                env, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [], 20000, 512, 4, 32)
+                env, [(64, 6, 2, 0), (64, 6, 2, 2), (64, 6, 2, 2)], [], 20000, 1024, 4, 32)
             if not args.no_monitor:
                 env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
                     ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
@@ -74,8 +75,8 @@ class DQN(StandardEnvWrapAlgo):
         exp_buff_agent = self.register_agent(ExperienceBufferAgent(
             "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
-        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [(32, 8, 4), (64, 4, 2), (64, 3, 1)], [512], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
-                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer, args.death_cost))  # type: DQNCoreAgent
+        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [(64, 6, 2, 0), (64, 6, 2, 2), (64, 6, 2, 2)], [512], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
+                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer, args.dqn_ptemp, args.death_cost))  # type: DQNCoreAgent
 
         self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
                                                  'epsilon', args.min_explore_steps, 1, args.ep, args.ep_anneal_steps))
