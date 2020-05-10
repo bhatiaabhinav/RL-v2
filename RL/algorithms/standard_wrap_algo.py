@@ -51,7 +51,7 @@ class StandardEnvWrapAlgo(RL.Algorithm):
             if args.atari_clip_rewards:
                 logger.info('Wrapping with ClipRewards')
                 env = ClipRewardEnv(env)
-            args.frameskip = args.atari_frameskip
+            self.frameskip = args.atari_frameskip
         elif '-ram' in self.manager.env_id and '-v4' in self.manager.env_id:  # for playing atari from ram
             logger.info('Atari RAM env detected')
             logger.info('Wrapping with Fire Reset')
@@ -66,11 +66,12 @@ class StandardEnvWrapAlgo(RL.Algorithm):
             if args.atari_clip_rewards:
                 logger.info('Wrapping with ClipRewards')
                 env = ClipRewardEnv(env)
-            args.frameskip = args.atari_frameskip
+            self.frameskip = args.atari_frameskip
         else:
             if args.frameskip > 1:
                 logger.info('Wrapping with Frameskip')
                 env = FrameSkipWrapper(env, skip=args.frameskip)
+            self.frameskip = args.frameskip
             # TODO: Add Framestack here:
         if args.artificial_timelimit:
             logger.info('Wrapping with Timelimit')

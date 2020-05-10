@@ -32,7 +32,7 @@ class Random(StandardEnvWrapAlgo):
             "RandomAgent", self, play_for_steps=None))
 
         self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
-                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=args.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
+                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
 
         self.register_agent(ConsolePrintAgent("ConsolePrinter", self, lambda: {
             'Steps': self.manager.num_steps,
