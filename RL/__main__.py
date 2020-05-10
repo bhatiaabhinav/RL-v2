@@ -61,6 +61,7 @@ with open(os.path.join(logdir, 'args.json'), 'w') as f:
 wandb.init(dir=logdir, project=args.env_id,
            name=f'{args.algo_id}_{args.algo_suffix}', monitor_gym=True)
 wandb.config.update(args)
+wandb.save(logfile)
 
 try:
     m = RL.Manager(args.env_id, args.algo_id, args.algo_suffix, num_steps_to_run=args.num_steps_to_run,

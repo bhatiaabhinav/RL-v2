@@ -109,7 +109,7 @@ class DQN(StandardEnvWrapAlgo):
         }))
 
         self.register_agent(WandbAgent('WandbAgent', self,
-                                       episode_freq=1, step_freq=None))
+                                       episode_freq=1, step_freq=None, models_to_watch=dqn_core_agent.q))
 
         if not args.no_render:
             self.register_agent(SimpleRenderAgent("SimpleRenderAgent", self))

@@ -76,6 +76,8 @@ class StatsRecordingAgent(RL.Agent):
             self._stats['episode_cost_returns']))
         RL.stats.record_kvstat('Av CPE (Last 100)', np.mean(
             self._stats['episode_cost_returns'][-100:]))
+        RL.stats.record_kvstat('Total Steps', self.manager.num_steps)
+        RL.stats.record_kvstat('Total Episodes', self.manager.num_episodes)
         # latest_stats = RL.stats.get_latest_stats()
         # logger.info(f'All latest stats: {latest_stats}')
         # logger.info(f'All kv stats: {self.kvstats}')
