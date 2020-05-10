@@ -4,7 +4,7 @@ import numpy as np
 from gym.wrappers import Monitor
 
 from RL import argparser as p
-from RL import register_algo
+from RL import register_algo, stats
 from RL.agents.console_print_agent import ConsolePrintAgent
 from RL.agents.dqn_agent import DQNCoreAgent
 from RL.agents.exp_buff_agent import ExperienceBufferAgent
@@ -15,6 +15,7 @@ from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
+from RL.agents.wandb_agent import WandbAgent
 from RL.wrappers.perception_wrapper import PerceptionWrapper  # noqa
 
 from .standard_wrap_algo import (StandardEnvWrapAlgo,
@@ -49,6 +50,10 @@ p.add_argument('--no_ignore_done_on_timelimit', action='store_true')
 p.add_argument('--death_cost', type=float, default=0)
 p.add_argument('--dqn_ptemp', type=float, default=0)
 p.add_argument('--perception_wrap', action='store_true')
+p.add_argument('--conv1', nargs='+', default=[64, 6, 2, 0], type=int)
+p.add_argument('--conv2', nargs='+', default=[64, 6, 2, 2], type=int)
+p.add_argument('--conv3', nargs='+', default=[64, 6, 2, 2], type=int)
+p.add_argument('--hiddens', nargs='*', default=[1024], type=int)
 
 
 class DQN(StandardEnvWrapAlgo):
@@ -57,7 +62,7 @@ class DQN(StandardEnvWrapAlgo):
         args = p.parse_args()
         if args.perception_wrap:
             env = PerceptionWrapper(
-                env, [(64, 6, 2, 0), (64, 6, 2, 2), (64, 6, 2, 2)], [], 20000, 1024, 4, 32)
+                env, [args.conv1, args.conv2, args.conv3], [], 20000, 1024, 4, 32)
             if not args.no_monitor:
                 env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
                     ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
@@ -75,7 +80,7 @@ class DQN(StandardEnvWrapAlgo):
         exp_buff_agent = self.register_agent(ExperienceBufferAgent(
             "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
-        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [(64, 6, 2, 0), (64, 6, 2, 2), (64, 6, 2, 2)], [512], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
+        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [args.conv1, args.conv2, args.conv3], [64, 32], args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
                                                           args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer, args.dqn_ptemp, args.death_cost))  # type: DQNCoreAgent
 
         self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
@@ -84,24 +89,27 @@ class DQN(StandardEnvWrapAlgo):
         self.register_agent(ModelCopyAgent('TargetNetCopier', self, dqn_core_agent.q,
                                            dqn_core_agent.target_q, args.target_q_freq, args.target_q_tau, args.min_explore_steps))
 
-        stats_agent = self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
-                                                              gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=args.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
+        self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
+                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=args.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
 
         self.register_agent(ConsolePrintAgent("ConsolePrinter", self, lambda: {
             'Steps': self.manager.num_steps,
             'Episodes': self.manager.num_episodes,
             'Len': self.manager.num_episode_steps,
-            'R': stats_agent.get_one('episode_returns'),
-            'R(100)': np.mean(stats_agent.stats['episode_returns'][-100:]),
-            'loss': stats_agent.get_one('loss'),
-            'mb_v': stats_agent.get_one('mb_v'),
+            'R': stats.get_latest('episode_returns'),
+            'R(100)': np.mean(stats.stats['episode_returns'][-100:]),
+            'loss': stats.get_latest('loss'),
+            'mb_v': stats.get_latest('mb_v'),
             'ep': dqn_core_agent.epsilon
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,
-            'Av Return Per Ep': sum(stats_agent.stats['episode_returns']) / self.manager.num_episodes,
-            'Av Cost Per Ep': sum(stats_agent.stats['episode_cost_returns']) / self.manager.num_episodes
+            'Av Return Per Ep': sum(stats.stats['episode_returns']) / self.manager.num_episodes,
+            'Av Cost Per Ep': sum(stats.stats['episode_cost_returns']) / self.manager.num_episodes
         }))
+
+        self.register_agent(WandbAgent('WandbAgent', self,
+                                       episode_freq=1, step_freq=None))
 
         if not args.no_render:
             self.register_agent(SimpleRenderAgent("SimpleRenderAgent", self))
@@ -112,7 +120,7 @@ register_algo('DQN', DQN)
 
 # Standard Scripts:
 '''
-python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --nsteps=3 --ep_anneal_steps=10000 --no_render
+python -m RL CartPole-v0 DQN 20000 --algo_suffix=test --seed=0 --nsteps=3 --ep_anneal_steps=10000 --no_render --hiddens 64 32
 '''
 
 '''

@@ -7,7 +7,6 @@ from torch import optim
 
 import RL
 from RL.agents.exp_buff_agent import ExperienceBuffer
-from RL.agents.stats_recording_agent import StatsRecordingAgent
 from RL.utils.standard_models import FFModel
 from RL.utils.util_fns import toNpFloat32
 
@@ -54,18 +53,35 @@ class DQNCoreAgent(RL.Agent):
             self.optim = optim.Adam(self.q.parameters(), lr=self.lr)
 
     def pi(self, q, alpha=0):
-        alpha = max(alpha, 1e-8)
-        q_max, q_argmax = torch.max(q, dim=-1, keepdim=True)
-        q = q - q_max
-        q /= alpha
-        exp_q = torch.exp(q)
-        sum_exp_q = torch.sum(exp_q, dim=-1, keepdim=True)
-        p = exp_q / sum_exp_q
+        if alpha == 0:
+            p = torch.zeros_like(q)
+            q_argmax = torch.argmax(q, dim=-1)
+            p[torch.arange(len(q)), q_argmax] = 1
+        else:
+            q_max, q_argmax = torch.max(q, dim=-1, keepdim=True)
+            q = q - q_max
+            q /= alpha
+            exp_q = torch.exp(q)
+            sum_exp_q = torch.sum(exp_q, dim=-1, keepdim=True)
+            p = exp_q / sum_exp_q
         return p
 
+    def v(self, q, pi=None, alpha=0):
+        if alpha == 0:
+            v, a = torch.max(q, dim=-1)
+        else:
+            if pi is None:
+                pi = self.pi(q, alpha)
+            logpi = torch.log(pi + 1e-20)
+            v = torch.sum(pi * (q - alpha * logpi), dim=-1)
+        return v
+
     def action(self, q, alpha=0):
-        p = self.pi(q, alpha=alpha)
-        a = torch.multinomial(p, num_samples=1, replacement=True)[:, 0]
+        if alpha == 0:
+            a = torch.argmax(q, dim=-1)
+        else:
+            p = self.pi(q, alpha=alpha)
+            a = torch.multinomial(p, num_samples=1, replacement=True)[:, 0]
         return a
 
     def act(self):
@@ -73,8 +89,9 @@ class DQNCoreAgent(RL.Agent):
             obs = torch.from_numpy(toNpFloat32(
                 self.manager.obs, True)).to(device)
             q = self.q(obs)
-            greedy_a = torch.argmax(q, dim=-1).cpu().detach().numpy()[0]
-            a = self.action(q, alpha=self.ptemp).cpu().detach().numpy()[0]
+            greedy_a = self.action(q, alpha=0).cpu().detach().numpy()[0]
+            a = greedy_a if self.ptemp == 0 else self.action(
+                q, alpha=self.ptemp).cpu().detach().numpy()[0]
             logger.debug(f'q_values: {q}')
 
         if self.should_exploit_fn():
@@ -104,21 +121,16 @@ class DQNCoreAgent(RL.Agent):
                 if self.double_dqn:
                     next_q = self.q(next_states)
                     next_pi = self.pi(next_q, self.ptemp)
-                    next_logpi = torch.log(next_pi + 1e-20)
-                    next_target_v = torch.sum(
-                        next_pi * (next_target_q - next_logpi), dim=-1)
+                    next_target_v = self.v(
+                        next_target_q, next_pi, self.ptemp).cpu().detach().numpy()
                 else:
-                    next_target_pi = self.pi(next_target_q, self.ptemp)
-                    next_target_logpi = torch.log(next_target_pi + 1e-20)
-                    next_target_v = torch.sum(
-                        next_target_pi * (next_target_q - next_target_logpi), dim=-1)
-                next_target_v = next_target_v.cpu().detach().numpy()
+                    next_target_v = self.v(
+                        next_target_q, None, self.ptemp).cpu().detach().numpy()
                 desired_v = rewards + (1 - dones.astype(np.int)) * (self.gamma ** self.nsteps) * \
                     next_target_v - \
                     dones.astype(np.int) * (self.death_cost)  # penalize death
                 q = self.q(states)
-                v = torch.sum(self.pi(q, self.ptemp) * q,
-                              dim=-1).cpu().detach().numpy()
+                v = self.v(q, None, self.ptemp).cpu().detach().numpy()
                 q = q.cpu().detach().numpy()
                 all_states_idx = np.arange(self.mb_size)
                 td_errors = desired_v - q[all_states_idx, actions]
@@ -139,6 +151,9 @@ class DQNCoreAgent(RL.Agent):
             loss = loss.cpu().detach().item()
 
             logger.debug(f'Stepped. Loss={loss}')
-            recorder = self.algo.get_agent_by_type(StatsRecordingAgent)
-            recorder.record_kvstat('loss', loss)
-            recorder.record_kvstat('mb_v', np.mean(v))
+            RL.stats.record_kvstats(loss=loss, mb_v=np.mean(v))
+
+    def post_episode(self):
+        loss = RL.stats.kvstats.get('loss', 0)
+        mb_v = RL.stats.kvstats.get('mb_v', 0)
+        RL.stats.record_stats(loss=loss, mb_v=mb_v)

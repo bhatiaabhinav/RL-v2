@@ -6,7 +6,7 @@ import RL
 
 
 class ModelCopyAgent(RL.Agent):
-    def __init__(self, name, algo, model_from: nn.Module, model_to: nn.Module, step_freq, alpha, no_copy_for_steps, episode_freq=None, no_copy_for_episodes=0,):
+    def __init__(self, name, algo, model_from: nn.Module, model_to: nn.Module, step_freq, alpha, no_copy_for_steps, episode_freq=None, no_copy_for_episodes=0):
         super().__init__(name, algo, False)
         self.model_from = model_from
         self.model_to = model_to
@@ -17,7 +17,8 @@ class ModelCopyAgent(RL.Agent):
         self.no_copy_for_episodes = no_copy_for_episodes
 
     def copy(self, alpha):
-        logging.getLogger(__name__).debug(f'Copying model with softness {alpha}')
+        logging.getLogger(__name__).debug(
+            f'Copying model with softness {alpha}')
         params_from = self.model_from.parameters()
         params_to = self.model_to.parameters()
         for pf, pt in zip(params_from, params_to):

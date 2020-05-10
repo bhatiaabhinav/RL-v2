@@ -4,7 +4,9 @@ For Example:
 - Configuring root logger
 - Providing root argparse
 '''
-from .core import Manager, Algorithm, Agent, register_algo, make_algo, registered_algos  # noqa
 from argparse import ArgumentParser
+
+from .core import (Agent, Algorithm, Manager, make_algo, register_algo,  # noqa
+                   registered_algos, stats)
 
 argparser = ArgumentParser(conflict_handler='resolve')

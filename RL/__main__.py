@@ -3,6 +3,8 @@ import os
 import shutil
 import sys
 
+import wandb
+
 import RL
 import RL.algorithms
 from RL import argparser as p
@@ -55,6 +57,10 @@ with open(os.path.join(logdir, 'command.sh'), 'w') as f:
 
 with open(os.path.join(logdir, 'args.json'), 'w') as f:
     f.write(str(vars(args)))
+
+wandb.init(dir=logdir, project=args.env_id,
+           name=f'{args.algo_id}_{args.algo_suffix}', monitor_gym=True)
+wandb.config.update(args)
 
 try:
     m = RL.Manager(args.env_id, args.algo_id, args.algo_suffix, num_steps_to_run=args.num_steps_to_run,

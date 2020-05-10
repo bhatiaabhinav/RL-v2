@@ -1,7 +1,5 @@
 import RL
 
-from .stats_recording_agent import StatsRecordingAgent
-
 
 class LinearAnnealingAgent(RL.Agent):
     def __init__(self, name, algo, obj, variable_name, start_delay, start_val, final_val, duration):
@@ -12,16 +10,23 @@ class LinearAnnealingAgent(RL.Agent):
         self.final_val = final_val
         self.duration = duration
         self.variable_name = variable_name
+        self.val = start_val
 
     def start(self):
         setattr(self.obj, self.variable_name, self.start_val)
-        self.recorder = self.algo.get_agent_by_type(StatsRecordingAgent)  # type: StatsRecordingAgent
+        self.val = self.start_val
 
     def pre_act(self):
         if self.manager.num_steps <= self.start_delay:
             val = self.start_val
         else:
             steps = self.manager.num_steps - self.start_delay
-            val = self.final_val + (self.start_val - self.final_val) * (1 - min(steps / self.duration, 1))
+            val = self.final_val + \
+                (self.start_val - self.final_val) * \
+                (1 - min(steps / self.duration, 1))
+        self.val = val
         setattr(self.obj, self.variable_name, val)
-        self.recorder.record_kvstat(self.variable_name, val)
+        RL.stats.record_kvstat(self.variable_name, self.val)
+
+    def post_episode(self):
+        RL.stats.record_stat(self.variable_name, self.val)
