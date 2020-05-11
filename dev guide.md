@@ -1,6 +1,8 @@
 RL-v2
 =====
 
+TODO: This is an outdated file. Need to rewrite.
+
 Architecture
 ------------
 
@@ -70,6 +72,6 @@ Todo:
 Housekeeping:
 - [X] Video Record Unwrapped - can couple with renderer .. or monitor?
   - Let's do monitor because can upload monitor logs to gym site then. Also, manager records the stats of the wrapped env. Might need standardized (by openai) raw stats of unwrapped env.
-- [ ] Video Record Obs
+- [X] Video Record Obs
   - how? 
-- [ ] Other Wrappers can record as required
+- [X] Other Wrappers can record as required
