@@ -85,17 +85,13 @@ class DQNCoreAgent(RL.Agent):
         return a
 
     def act(self):
-        with torch.no_grad():
-            obs = torch.from_numpy(toNpFloat32(
-                self.manager.obs, True)).to(device)
-            q = self.q(obs)
-            greedy_a = self.action(q, alpha=0).cpu().detach().numpy()[0]
-            a = greedy_a if self.ptemp == 0 else self.action(
-                q, alpha=self.ptemp).cpu().detach().numpy()[0]
-            logger.debug(f'q_values: {q}')
-
         if self.should_exploit_fn():
             logger.debug('Exploit mode action')
+            with torch.no_grad():
+                obs = torch.from_numpy(toNpFloat32(
+                    self.manager.obs, True)).to(device)
+                greedy_a = self.action(
+                    self.q(obs), alpha=0).cpu().detach().numpy()[0]
             return greedy_a
         else:
             if np.random.rand() < self.epsilon:
@@ -103,6 +99,11 @@ class DQNCoreAgent(RL.Agent):
                 return self.env.action_space.sample()
             else:
                 logger.debug('Soft greedy action')
+                with torch.no_grad():
+                    obs = torch.from_numpy(toNpFloat32(
+                        self.manager.obs, True)).to(device)
+                    a = self.action(
+                        self.q(obs), alpha=self.ptemp).cpu().detach().numpy()[0]
                 return a
 
     def loss(self, states, desired_q):

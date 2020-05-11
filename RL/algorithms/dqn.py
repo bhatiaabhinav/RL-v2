@@ -50,9 +50,12 @@ p.add_argument('--no_ignore_done_on_timelimit', action='store_true')
 p.add_argument('--death_cost', type=float, default=0)
 p.add_argument('--dqn_ptemp', type=float, default=0)
 p.add_argument('--perception_wrap', action='store_true')
-p.add_argument('--conv1', nargs='+', default=[64, 6, 2, 0], type=int)
-p.add_argument('--conv2', nargs='+', default=[64, 6, 2, 2], type=int)
-p.add_argument('--conv3', nargs='+', default=[64, 6, 2, 2], type=int)
+p.add_argument('--conv1', nargs='+', default=[64, 6, 2, 0],
+               type=int, help='In format: channels kernel_size stride padding. Specify 0 to skip this layer.')
+p.add_argument('--conv2', nargs='+', default=[64, 6, 2, 2],
+               type=int, help='In format: channels kernel_size stride padding. Specify 0 to skip this layer.')
+p.add_argument('--conv3', nargs='+', default=[64, 6, 2, 2],
+               type=int, help='In format: channels kernel_size stride padding. Specify 0 to skip this layer.')
 p.add_argument('--hiddens', nargs='*', default=[1024], type=int)
 
 
@@ -60,9 +63,10 @@ class DQN(StandardEnvWrapAlgo):
     def wrap_env(self, env):
         env = super().wrap_env(env)
         args = p.parse_args()
+
         if args.perception_wrap:
             env = PerceptionWrapper(
-                env, [args.conv1, args.conv2, args.conv3], [], 20000, 1024, 4, 32)
+                env, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens[0:-1], args.exp_buffer_len // 10, args.hiddens[-1], args.train_freq, args.mb_size)
             if not args.no_monitor:
                 env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
                     ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
@@ -80,8 +84,10 @@ class DQN(StandardEnvWrapAlgo):
         exp_buff_agent = self.register_agent(ExperienceBufferAgent(
             "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
-        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, [args.conv1, args.conv2, args.conv3], args.hiddens, args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
-                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit, args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer, args.dqn_ptemp, args.death_cost))  # type: DQNCoreAgent
+        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens,
+                                                          args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
+                                                          args.td_clip, args.grad_clip, args.lr, args.ep, lambda: exploit_controller.should_exploit,
+                                                          args.eval_mode, args.min_explore_steps, exp_buff_agent.experience_buffer, args.dqn_ptemp, args.death_cost))  # type: DQNCoreAgent
 
         self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
                                                  'epsilon', args.min_explore_steps, 1, args.ep, args.ep_anneal_steps))

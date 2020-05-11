@@ -10,7 +10,7 @@ class WandbAgent(RL.Agent):
         self.step_freq = step_freq
         self.summary_names = [
             'Av RPE', 'Av RPE (Last 100)', 'Av CPE', 'Av CPE (Last 100)', 'Total Steps', 'Total Episodes']
-        wandb.watch(models_to_watch)
+        wandb.watch(models_to_watch, log="all", log_freq=1000)
 
     def write_to_wandb(self):
         s = RL.stats.get_latest_stats()
