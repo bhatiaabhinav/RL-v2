@@ -26,7 +26,3 @@ class LinearAnnealingAgent(RL.Agent):
                 (1 - min(steps / self.duration, 1))
         self.val = val
         setattr(self.obj, self.variable_name, val)
-        RL.stats.record_kvstat(self.variable_name, self.val)
-
-    def post_episode(self):
-        RL.stats.record_stat(self.variable_name, self.val)

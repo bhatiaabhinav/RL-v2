@@ -1,4 +1,3 @@
-from . import stats  # noqa
 from .agent import Agent  # noqa
 from .algorithm import (Algorithm, make_algo, register_algo,  # noqa
                         registered_algos)

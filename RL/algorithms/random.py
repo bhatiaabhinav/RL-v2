@@ -1,12 +1,13 @@
+import wandb
+
 from RL import argparser as p
-from RL import register_algo, stats
+from RL import register_algo
 from RL.agents.console_print_agent import ConsolePrintAgent
 from RL.agents.random_play_agent import RandomPlayAgent
 from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
-from RL.agents.wandb_agent import WandbAgent
 
 from .standard_wrap_algo import StandardEnvWrapAlgo
 
@@ -27,28 +28,29 @@ class Random(StandardEnvWrapAlgo):
         self.register_agent(SeedingAgent("SeedingAgent", self, args.seed))
         self.register_agent(RewardScalingAgent(
             "RewardScaler", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling))
+        self.manager.episode_type = 1
 
         self.register_agent(RandomPlayAgent(
             "RandomAgent", self, play_for_steps=None))
 
         self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
-                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip, should_exploit_fn=lambda: True))  # type: StatsRecordingAgent
+                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip))  # type: StatsRecordingAgent
 
         self.register_agent(ConsolePrintAgent("ConsolePrinter", self, lambda: {
             'Steps': self.manager.num_steps,
             'Episodes': self.manager.num_episodes,
             'Len': self.manager.num_episode_steps,
-            'R': stats.get_latest('episode_returns'),
-            'C': stats.get_latest('episode_cost_returns')
+            'R': wandb.run.history.row['Episode/Reward'],
+            'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
+            'C': wandb.run.history.row['Episode/Cost']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,
-            'Av Return Per Ep': sum(stats.stats['episode_returns']) / self.manager.num_episodes,
-            'Av Cost Per Ep': sum(stats.stats['episode_cost_returns']) / self.manager.num_episodes
+            'Average RPE': wandb.run.history.row['Average/RPE'],
+            'Average CPE': wandb.run.history.row['Average/CPE'],
+            'Average RPS': wandb.run.history.row['Average/RPS'],
+            'Average CPS': wandb.run.history.row['Average/CPS']
         }))
-
-        self.register_agent(WandbAgent('WandbAgent', self,
-                                       episode_freq=1, step_freq=None))
 
         if not args.no_render:
             self.register_agent(SimpleRenderAgent("SimpleRenderAgent", self))

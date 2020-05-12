@@ -7,6 +7,6 @@ For Example:
 from argparse import ArgumentParser
 
 from .core import (Agent, Algorithm, Manager, make_algo, register_algo,  # noqa
-                   registered_algos, stats)
+                   registered_algos)
 
 argparser = ArgumentParser(conflict_handler='resolve')

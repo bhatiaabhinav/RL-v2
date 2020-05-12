@@ -24,8 +24,11 @@ class Manager:
         self.num_episodes_to_run = num_episodes_to_run
         self.logdir = logdir
         self.num_steps = 0
+        self.step_id = 0
         self.num_episode_steps = 0
         self.num_episodes = 0
+        self.episode_id = 0
+        self.episode_type = 0  # 0 means explore, 1 means exploit, 2 means eval
         self.prev_obs = None
         self.action = None
         self.obs = None
@@ -61,7 +64,8 @@ class Manager:
         while not self._should_stop():
             # do the reset
             if need_reset:
-                logger.info(f'------------------ Reseting env. Staring episode #{self.num_episodes} -----------------')
+                logger.info(
+                    f'------------------ Reseting env. Staring episode #{self.num_episodes} -----------------')
                 self.prev_obs = self.obs
                 self.obs = self.env.reset()
                 self.obs = np.asarray(self.obs)
@@ -79,7 +83,8 @@ class Manager:
                 if len(self.obs.shape) == 1:
                     logger.debug(f'obs #{self.num_episode_steps}: {self.obs}')
                 else:
-                    logger.debug(f'obs #{self.num_episode_steps} shape: {self.obs.shape}')
+                    logger.debug(
+                        f'obs #{self.num_episode_steps} shape: {self.obs.shape}')
             # pre act
             logger.debug('Calling algo pre_act')
             self.algo.pre_act()
@@ -88,15 +93,19 @@ class Manager:
             self.action = self.algo.act()
             logger.debug(f'action #{self.num_episode_steps}: {self.action}')
             if self.action is None:
-                raise RuntimeError("The algorithm returned no action. The env cannot be stepped")
+                raise RuntimeError(
+                    "The algorithm returned no action. The env cannot be stepped")
             # step
             self.prev_obs = self.obs
             logger.debug('Stepping env')
-            self.obs, self.reward, self.done, self.info = self.env.step(self.action)
+            self.obs, self.reward, self.done, self.info = self.env.step(
+                self.action)
             self.obs = np.asarray(self.obs)
             if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f'reward={self.reward}, done={self.done}, info={self.info}')
-            logger.debug("Incrementing rewards, costs, num_steps, num_episode_steps")
+                logger.debug(
+                    f'reward={self.reward}, done={self.done}, info={self.info}')
+            logger.debug(
+                "Incrementing rewards, costs, num_steps, num_episode_steps")
             self.sum_of_rewards += self.reward
             self.cost = self.info.get('cost', 0)
             self.sum_of_costs += self.cost
@@ -108,12 +117,18 @@ class Manager:
             # post episode for envs which are done:
             need_reset = self.done
             if self.done:
-                logger.info(f"Episode #{self.num_episodes} ended. Length={self.num_episode_steps} Sum_rewards={self.sum_of_rewards}. Sum_costs={self.sum_of_costs}")
-                logger.info(f"Incrementing num_episodes to {self.num_episodes + 1}")
+                logger.info(
+                    f"Episode #{self.num_episodes} ended. Length={self.num_episode_steps} Sum_rewards={self.sum_of_rewards}. Sum_costs={self.sum_of_costs}")
+                logger.info(
+                    f"Incrementing num_episodes to {self.num_episodes + 1}")
                 self.num_episodes += 1
                 logger.info('Calling algo post_episode')
                 self.algo.post_episode()
-        logger.info(f'------------------ stopping run at num_steps={self.num_steps} and num_episodes={self.num_episodes} ------------------')
+                self.episode_id += 1
+            self.step_id += 1
+        self.step_id -= 1  # reverting the extra increment in final iteration
+        logger.info(
+            f'------------------ stopping run at num_steps={self.num_steps} and num_episodes={self.num_episodes} ------------------')
         logger.info('Calling algo pre_close')
         self.algo.pre_close()
         logger.info('Closing env')

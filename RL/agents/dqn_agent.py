@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 from torch import optim
 
 import RL
@@ -20,7 +21,7 @@ class DQNModel(FFModel):
 
 
 class DQNCoreAgent(RL.Agent):
-    def __init__(self, name, algo, convs, hidden_layers, train_freq, mb_size, double_dqn, gamma, nsteps, td_clip, grad_clip, lr, epsilon, should_exploit_fn, eval_mode, no_train_for_steps, exp_buffer: ExperienceBuffer, policy_temperature=0, death_cost=0):
+    def __init__(self, name, algo, convs, hidden_layers, train_freq, mb_size, double_dqn, gamma, nsteps, td_clip, grad_clip, lr, epsilon, eval_mode, no_train_for_steps, exp_buffer: ExperienceBuffer, policy_temperature=0, death_cost=0):
         super().__init__(name, algo, supports_multiple_envs=False)
         self.convs = convs
         self.hidden_layers = hidden_layers
@@ -35,15 +36,16 @@ class DQNCoreAgent(RL.Agent):
         self.no_train_for_steps = no_train_for_steps
         self.exp_buffer = exp_buffer
         self.epsilon = epsilon
-        self.should_exploit_fn = should_exploit_fn
         self.death_cost = death_cost
         self.ptemp = policy_temperature
+        self._loss, self._mb_v = 0, 0
 
         logger.info(f'Creating main network on device {device}')
         self.q = DQNModel(self.env.observation_space.shape,
                           convs, hidden_layers, self.env.action_space.n)
         self.q.to(device)
         logger.info(str(self.q))
+        wandb.watch([self.q], log='all', log_freq=1000 // train_freq)
         if not eval_mode:
             logger.info(f'Creating target network on device {device}')
             self.target_q = DQNModel(
@@ -85,8 +87,8 @@ class DQNCoreAgent(RL.Agent):
         return a
 
     def act(self):
-        if self.should_exploit_fn():
-            logger.debug('Exploit mode action')
+        if self.manager.episode_type > 0:
+            logger.debug('Exploit action')
             with torch.no_grad():
                 obs = torch.from_numpy(toNpFloat32(
                     self.manager.obs, True)).to(device)
@@ -94,6 +96,7 @@ class DQNCoreAgent(RL.Agent):
                     self.q(obs), alpha=0).cpu().detach().numpy()[0]
             return greedy_a
         else:
+            logger.debug('Behavior Policy')
             if np.random.rand() < self.epsilon:
                 logger.debug('Random action')
                 return self.env.action_space.sample()
@@ -110,7 +113,7 @@ class DQNCoreAgent(RL.Agent):
         return F.smooth_l1_loss(self.q(states), desired_q)
 
     def post_act(self):
-        if self.manager.num_steps > self.no_train_for_steps and (self.manager.num_steps - 1) % self.train_freq == 0:
+        if self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
             logger.debug('Training')
             with torch.no_grad():
                 states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
@@ -149,12 +152,19 @@ class DQNCoreAgent(RL.Agent):
                 torch.nn.utils.clip_grad_norm_(
                     self.q.parameters(), self.grad_clip)
             self.optim.step()
-            loss = loss.cpu().detach().item()
 
-            logger.debug(f'Stepped. Loss={loss}')
-            RL.stats.record_kvstats(loss=loss, mb_v=np.mean(v))
+            self._loss, self._mb_v = loss.cpu().detach().item(), np.mean(v)
+
+        if self.manager.step_id % 1000 == 0:
+            wandb.log({
+                'DQN/Loss': self._loss,
+                'DQN/Value': self._mb_v,
+                'DQN/Epsilon': self.epsilon
+            }, step=self.manager.step_id)
 
     def post_episode(self):
-        loss = RL.stats.kvstats.get('loss', 0)
-        mb_v = RL.stats.kvstats.get('mb_v', 0)
-        RL.stats.record_stats(loss=loss, mb_v=mb_v)
+        wandb.log({
+            'DQN/Loss': self._loss,
+            'DQN/Value': self._mb_v,
+            'DQN/Epsilon': self.epsilon
+        }, step=self.manager.step_id)
