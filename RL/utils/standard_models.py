@@ -1,3 +1,5 @@
+import logging
+
 import torch
 from torch import nn
 
@@ -38,6 +40,12 @@ class FFModel(nn.Module):
                         self.conv_layers.append(nn.BatchNorm2d(shape[0]))
                     self.conv_layers.append(act_fn_callable())
             self.convs_output_shape = shape
+        else:
+            # Since skipping Conv layers, write a warning
+            logging.getLogger(__name__).warn(
+                f"Conv layers were requested but the input shape {input_shape} does not support convs")
+            total_layers -= len(convs)
+
         if len(linears) > 0:
             num_features = shape[0] if len(
                 shape) == 1 else shape[0] * shape[1] * shape[2]
