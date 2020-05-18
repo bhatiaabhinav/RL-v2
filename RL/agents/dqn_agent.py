@@ -18,10 +18,11 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 class DQNModel(FFModel):
     def __init__(self, input_shape, convs, hidden_layers, n_actions):
         super().__init__(input_shape, convs, list(hidden_layers) + [n_actions])
+        self.linear_layers[-1].bias.data.fill_(0)
 
 
 class DQNCoreAgent(RL.Agent):
-    def __init__(self, name, algo, convs, hidden_layers, train_freq, mb_size, double_dqn, gamma, nsteps, td_clip, grad_clip, lr, epsilon, eval_mode, no_train_for_steps, exp_buffer: ExperienceBuffer, policy_temperature=0, death_cost=0):
+    def __init__(self, name, algo, convs, hidden_layers, train_freq, mb_size, double_dqn, gamma, nsteps, td_clip, grad_clip, lr, epsilon, eval_mode, no_train_for_steps, exp_buffer: ExperienceBuffer, policy_temperature=0):
         super().__init__(name, algo, supports_multiple_envs=False)
         self.convs = convs
         self.hidden_layers = hidden_layers
@@ -36,7 +37,6 @@ class DQNCoreAgent(RL.Agent):
         self.no_train_for_steps = no_train_for_steps
         self.exp_buffer = exp_buffer
         self.epsilon = epsilon
-        self.death_cost = death_cost
         self.ptemp = policy_temperature
         self._loss, self._mb_v = 0, 0
 
@@ -130,14 +130,14 @@ class DQNCoreAgent(RL.Agent):
                 else:
                     next_target_v = self.v(
                         next_target_q, None, self.ptemp).cpu().detach().numpy()
-                desired_v = rewards + (1 - dones.astype(np.int)) * (self.gamma ** self.nsteps) * \
-                    next_target_v - \
-                    dones.astype(np.int) * (self.death_cost)  # penalize death
+                desired_q = rewards + \
+                    (1 - dones.astype(np.int)) * \
+                    (self.gamma ** self.nsteps) * next_target_v
                 q = self.q(states)
                 v = self.v(q, None, self.ptemp).cpu().detach().numpy()
                 q = q.cpu().detach().numpy()
                 all_states_idx = np.arange(self.mb_size)
-                td_errors = desired_v - q[all_states_idx, actions]
+                td_errors = desired_q - q[all_states_idx, actions]
                 if self.td_clip is not None:
                     logger.debug('Doing TD error clipping')
                     td_errors = np.clip(td_errors, -self.td_clip, self.td_clip)
