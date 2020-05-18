@@ -12,17 +12,6 @@ from RL.wrappers.wrappers import FrameSkipWrapper
 
 logger = logging.getLogger(__name__)
 
-p.add_argument('--frameskip', default=1, type=int)
-p.add_argument('--artificial_timelimit', default=None, type=int)
-p.add_argument('--atari_noop_max', default=30, type=int)
-p.add_argument('--atari_frameskip', default=4, type=int)
-p.add_argument('--atari_framestack', default=4, type=int)
-p.add_argument('--atari_episodic_life', action='store_true')
-p.add_argument('--atari_clip_rewards', action='store_true')
-p.add_argument('--no_monitor', action='store_true')
-p.add_argument('--monitor_video_freq', default=100, type=int)
-p.add_argument('--eval_mode', action='store_true')
-
 
 def capped_quadratic_video_schedule(episode_id, cap):
     if episode_id < cap:
@@ -36,6 +25,9 @@ class StandardEnvWrapAlgo(RL.Algorithm):
         global logger
         logger = logging.getLogger(__name__)
         args = p.parse_args()
+        if args.artificial_timelimit:
+            logger.info('Wrapping with Timelimit')
+            env = TimeLimit(env, max_episode_steps=args.artificial_timelimit)
         if not args.no_monitor:
             env = Monitor(env, osp.join(
                 self.manager.logdir, 'openai_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
@@ -73,7 +65,4 @@ class StandardEnvWrapAlgo(RL.Algorithm):
                 env = FrameSkipWrapper(env, skip=args.frameskip)
             self.frameskip = args.frameskip
             # TODO: Add Framestack here:
-        if args.artificial_timelimit:
-            logger.info('Wrapping with Timelimit')
-            env = TimeLimit(env, max_episode_steps=args.artificial_timelimit)
         return env

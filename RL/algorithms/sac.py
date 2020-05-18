@@ -1,39 +1,22 @@
-import os.path as osp
-
 import wandb
-from gym.wrappers import Monitor
 
 from RL import argparser as p
 from RL import register_algo
 from RL.agents.console_print_agent import ConsolePrintAgent
-from RL.agents.dqn_agent import DQNCoreAgent
 from RL.agents.episode_type_control_agent import EpisodeTypeControlAgent
 from RL.agents.exp_buff_agent import ExperienceBufferAgent
-from RL.agents.linear_anneal_agent import LinearAnnealingAgent
 from RL.agents.model_copy_agent import ModelCopyAgent
 from RL.agents.reward_scaling_agent import RewardScalingAgent
+from RL.agents.sac_agent import SACAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
 from RL.wrappers.perception_wrapper import PerceptionWrapper  # noqa
 
-from .standard_wrap_algo import (StandardEnvWrapAlgo,
-                                 capped_quadratic_video_schedule)
+from .standard_wrap_algo import StandardEnvWrapAlgo
 
 
-class DQN(StandardEnvWrapAlgo):
-    def wrap_env(self, env):
-        env = super().wrap_env(env)
-        args = p.parse_args()
-
-        if args.perception_wrap:
-            env = PerceptionWrapper(
-                env, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens[0:-1], args.exp_buffer_len // 10, args.hiddens[-1], args.train_freq, args.mb_size)
-            if not args.no_monitor:
-                env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
-                    ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
-        return env
-
+class SAC(StandardEnvWrapAlgo):
     def setup(self):
         args = p.parse_args()
         self.register_agent(SeedingAgent("SeedingAgent", self, args.seed))
@@ -46,17 +29,20 @@ class DQN(StandardEnvWrapAlgo):
         if not args.eval_mode:
             exp_buff_agent = self.register_agent(ExperienceBufferAgent(
                 "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
+        else:
+            exp_buff_agent = None
 
-        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens,
-                                                          args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
-                                                          args.td_clip, args.grad_clip, args.lr, args.ep, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.dqn_ptemp))  # type: DQNCoreAgent
+        convs = list(filter(lambda x: x != [0], [
+                     args.conv1, args.conv2, args.conv3]))
+        sac_agent = self.register_agent(SACAgent('SACAgent', self, convs, args.hiddens,
+                                                 args.train_freq, args.mb_size, args.gamma, args.nsteps,
+                                                 args.td_clip, args.grad_clip, args.lr, args.a_lr, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.sac_alpha))  # type: SACAgent
 
         if not args.eval_mode:
-            self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
-                                                     'epsilon', args.min_explore_steps, 1, args.ep, args.ep_anneal_steps))
-
-            self.register_agent(ModelCopyAgent('TargetNetCopier', self, dqn_core_agent.q,
-                                               dqn_core_agent.target_q, args.target_q_freq, args.target_q_polyak, args.min_explore_steps))
+            self.register_agent(ModelCopyAgent('TargetNetCopier1', self, sac_agent.q1,
+                                               sac_agent.target_q1, 1, args.polyak, args.min_explore_steps))
+            self.register_agent(ModelCopyAgent('TargetNetCopier2', self, sac_agent.q2,
+                                               sac_agent.target_q2, 1, args.polyak, args.min_explore_steps))
 
         self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
                                                 gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip))  # type: StatsRecordingAgent
@@ -67,9 +53,9 @@ class DQN(StandardEnvWrapAlgo):
             'Len': self.manager.num_episode_steps,
             'R': wandb.run.history.row['Episode/Reward'],
             'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
-            'loss': wandb.run.history.row['DQN/Loss'],
-            'mb_v': wandb.run.history.row['DQN/Value'],
-            'ep': wandb.run.history.row['DQN/Epsilon']
+            'loss': wandb.run.history.row['SAC/Loss'],
+            'mb_v': wandb.run.history.row['SAC/Value'],
+            'logpi': wandb.run.history.row['SAC/Logpi']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,
@@ -81,4 +67,4 @@ class DQN(StandardEnvWrapAlgo):
             self.register_agent(SimpleRenderAgent("SimpleRenderAgent", self))
 
 
-register_algo('DQN', DQN)
+register_algo('SAC', SAC)

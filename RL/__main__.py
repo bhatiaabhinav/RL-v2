@@ -22,6 +22,10 @@ p.add_argument('--overwrite', action="store_true")
 
 args = p.parse_args()
 
+if 'BulletEnv-' in args.env_id:
+    import pybullet  # noqa
+    import pybullet_envs  # noqa
+
 logdir = os.path.join(args.rl_logdir, args.env_id,
                       args.algo_id + '_' + args.algo_suffix)
 logfile = os.path.join(logdir, 'logs.log')
