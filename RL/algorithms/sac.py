@@ -36,7 +36,7 @@ class SAC(StandardEnvWrapAlgo):
                      args.conv1, args.conv2, args.conv3]))
         sac_agent = self.register_agent(SACAgent('SACAgent', self, convs, args.hiddens,
                                                  args.train_freq, args.mb_size, args.gamma, args.nsteps,
-                                                 args.td_clip, args.grad_clip, args.lr, args.a_lr, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.sac_alpha))  # type: SACAgent
+                                                 args.td_clip, args.grad_clip, args.lr, args.a_lr, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.sac_alpha, args.fix_alpha))  # type: SACAgent
 
         if not args.eval_mode:
             self.register_agent(ModelCopyAgent('TargetNetCopier1', self, sac_agent.q1,
