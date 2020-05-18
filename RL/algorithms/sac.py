@@ -55,7 +55,7 @@ class SAC(StandardEnvWrapAlgo):
             'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
             'loss': wandb.run.history.row['SAC/Loss'],
             'mb_v': wandb.run.history.row['SAC/Value'],
-            'logpi': wandb.run.history.row['SAC/Logpi']
+            'alpha': wandb.run.history.row['SAC/Alpha']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,

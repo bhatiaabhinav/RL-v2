@@ -86,11 +86,14 @@ class SACAgent(RL.Agent):
         self.a_lr = a_lr
         self.no_train_for_steps = no_train_for_steps
         self.exp_buffer = exp_buffer
-        self.alpha = alpha
-        self._loss, self._mb_v, self._mb_logpi = 0, 0, 0
+        self.alpha = torch.tensor(alpha)
+        self.alpha.requires_grad = True
+        self._loss, self._mb_v, self._mb_ent = 0, 0, 0
 
         obs_space = self.env.observation_space
         ac_space = self.env.action_space
+
+        self.desired_ent = -ac_space.shape[0]
 
         logger.info(f'Creating Actor on device {device}')
         self.a = Actor(
@@ -117,6 +120,7 @@ class SACAgent(RL.Agent):
             self.q_params = list(self.q1.parameters()) + \
                 list(self.q2.parameters())
             self.optim_q = optim.Adam(self.q_params, lr=self.lr)
+            self.optim_alpha = optim.Adam([self.alpha], lr=self.lr)
 
     def act(self):
         if self.manager.episode_type > 0:
@@ -152,12 +156,13 @@ class SACAgent(RL.Agent):
                     next_states, return_logpi=True)
                 next_target_q = torch.min(
                     self.q1(next_states, next_actions), self.q2(next_states, next_actions))
-                next_target_v = (next_target_q - self.alpha *
+                next_target_v = (next_target_q - self.alpha.detach().item() *
                                  next_logpis).cpu().detach().numpy()
                 desired_q = rewards + \
                     (1 - dones.astype(np.int)) * \
                     (self.gamma ** self.nsteps) * next_target_v
 
+            # Optimize Critic
             self.optim_q.zero_grad()
             desired_q = torch.from_numpy(toNpFloat32(desired_q)).to(device)
             # TODO: TD Error Clip
@@ -168,30 +173,42 @@ class SACAgent(RL.Agent):
                 nn.utils.clip_grad_norm_(self.q_params, self.grad_clip)
             self.optim_q.step()
 
+            # Optimize Actor
             self.optim_a.zero_grad()
             actions, logpis = self.a(states, return_logpi=True)
-            q = torch.min(self.q1(states, actions), self.q2(states, actions))
-            mean_v = torch.mean(q - self.alpha * logpis)
+            mean_logpis = torch.mean(logpis)
+            mean_q = torch.mean(
+                torch.min(self.q1(states, actions), self.q2(states, actions)))
+            mean_v = mean_q - self.alpha.to(device) * mean_logpis
             actor_loss = -mean_v
             actor_loss.backward()
             if self.grad_clip:
                 nn.utils.clip_grad_norm_(self.a.parameters(), self.grad_clip)
             self.optim_a.step()
 
+            # Optimize Alpha
+            self.optim_alpha.zero_grad()
+            entropy = -mean_logpis.cpu().detach().item()
+            alpha_loss = self.alpha * (entropy - self.desired_ent)
+            alpha_loss.backward()
+            self.optim_alpha.step()
+
             self._loss = critics_loss.cpu().detach().item()
             self._mb_v = mean_v.cpu().detach().item()
-            self._mb_logpi = torch.mean(logpis).cpu().detach().item()
+            self._mb_ent = entropy
 
         if self.manager.step_id % 1000 == 0:
             wandb.log({
                 'SAC/Loss': self._loss,
                 'SAC/Value': self._mb_v,
-                'SAC/Logpi': self._mb_logpi
+                'SAC/Entropy': self._mb_ent,
+                'SAC/Alpha': self.alpha.item()
             }, step=self.manager.step_id)
 
     def post_episode(self):
         wandb.log({
             'SAC/Loss': self._loss,
             'SAC/Value': self._mb_v,
-            'SAC/Logpi': self._mb_logpi
+            'SAC/Entropy': self._mb_ent,
+            'SAC/Alpha': self.alpha.item()
         }, step=self.manager.step_id)
