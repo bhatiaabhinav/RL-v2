@@ -1,7 +1,7 @@
 from RL import argparser as p
 
 # Algos in these files will get registered on doing `import RL.algorithms`
-from . import dqn, random, sac  # noqa
+from . import ddpg, dqn, random, sac  # noqa
 
 # standard wrap args
 p.add_argument('--frameskip', default=1, type=int)
@@ -62,3 +62,6 @@ p.add_argument('--a_lr', type=float, default=1e-4)
 p.add_argument('--polyak', type=float, default=0.995)
 p.add_argument('--sac_alpha', type=float, default=0.2)
 p.add_argument('--fix_alpha', action='store_true')
+
+# DDPG args
+p.add_argument('--ddpg_noise', type=float, default=0.2)
