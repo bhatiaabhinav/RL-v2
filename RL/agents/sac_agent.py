@@ -161,7 +161,7 @@ class SACAgent(RL.Agent):
                 next_actions, next_logpis = self.a(
                     next_states, return_logpi=True)
                 next_target_q = torch.min(
-                    self.q1(next_states, next_actions), self.q2(next_states, next_actions))
+                    self.target_q1(next_states, next_actions), self.target_q2(next_states, next_actions))
                 next_target_v = (next_target_q - self.alpha *  # noqa
                                  next_logpis).cpu().detach().numpy()
                 desired_q = rewards + \
