@@ -15,7 +15,6 @@ from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
-from RL.wrappers.perception_wrapper import PerceptionWrapper  # noqa
 
 from .standard_wrap_algo import (StandardEnvWrapAlgo,
                                  capped_quadratic_video_schedule)
@@ -25,13 +24,9 @@ class DQN(StandardEnvWrapAlgo):
     def wrap_env(self, env):
         env = super().wrap_env(env)
         args = p.parse_args()
-
-        if args.perception_wrap:
-            env = PerceptionWrapper(
-                env, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens[0:-1], args.exp_buffer_len // 10, args.hiddens[-1], args.train_freq, args.mb_size)
-            if not args.no_monitor:
-                env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
-                    ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
+        if not args.no_monitor:
+            env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
+                ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
         return env
 
     def setup(self):
