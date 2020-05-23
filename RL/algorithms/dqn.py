@@ -1,7 +1,4 @@
-import os.path as osp
-
 import wandb
-from gym.wrappers import Monitor
 
 from RL import argparser as p
 from RL import register_algo
@@ -16,19 +13,10 @@ from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
 
-from .standard_wrap_algo import (StandardEnvWrapAlgo,
-                                 capped_quadratic_video_schedule)
+from .standard_wrap_algo import StandardEnvWrapAlgo
 
 
 class DQN(StandardEnvWrapAlgo):
-    def wrap_env(self, env):
-        env = super().wrap_env(env)
-        args = p.parse_args()
-        if not args.no_monitor:
-            env = Monitor(env, osp.join(self.manager.logdir, 'perception_monitor'), video_callable=lambda ep_id: capped_quadratic_video_schedule(
-                ep_id, args.monitor_video_freq), force=True, mode='evaluation' if args.eval_mode else 'training')
-        return env
-
     def setup(self):
         args = p.parse_args()
         self.register_agent(SeedingAgent("SeedingAgent", self, args.seed))
