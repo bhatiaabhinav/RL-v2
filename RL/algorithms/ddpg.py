@@ -11,7 +11,6 @@ from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
-from RL.wrappers.perception_wrapper import PerceptionWrapper  # noqa
 
 from .standard_wrap_algo import StandardEnvWrapAlgo
 
