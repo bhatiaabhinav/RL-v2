@@ -88,10 +88,9 @@ class SACAgent(RL.Agent):
         self.no_train_for_steps = no_train_for_steps
         self.exp_buffer = exp_buffer
         assert alpha >= 0, "alpha must be >= 0"
-        self.alpha = alpha
+        self.logalpha = torch.log(torch.tensor(alpha + 1e-10)).cpu()
         self.fix_alpha = fix_alpha
         if not fix_alpha:
-            self.logalpha = torch.log(torch.tensor(alpha + 1e-10)).cpu()
             self.logalpha.requires_grad = True
         self._loss, self._mb_v, self._mb_ent = 0, 0, 0
 
@@ -128,6 +127,10 @@ class SACAgent(RL.Agent):
             if not fix_alpha:
                 self.optim_alpha = optim.Adam([self.logalpha], lr=self.lr)
 
+    @property
+    def alpha(self):
+        return torch.exp(self.logalpha)
+
     def act(self):
         if self.manager.episode_type > 0:
             logger.debug('Exploit Action')
@@ -162,7 +165,7 @@ class SACAgent(RL.Agent):
                     next_states, return_logpi=True)
                 next_target_q = torch.min(
                     self.target_q1(next_states, next_actions), self.target_q2(next_states, next_actions))
-                next_target_v = (next_target_q - self.alpha *  # noqa
+                next_target_v = (next_target_q - self.alpha.item() *  # noqa
                                  next_logpis).cpu().detach().numpy()
                 desired_q = rewards + \
                     (1 - dones.astype(np.int)) * \
@@ -183,7 +186,7 @@ class SACAgent(RL.Agent):
             self.optim_a.zero_grad()
             actions, logpis = self.a(states, return_logpi=True)
             q = torch.min(self.q1(states, actions), self.q2(states, actions))
-            mean_v = torch.mean(q - self.alpha * logpis)
+            mean_v = torch.mean(q - self.alpha.item() * logpis)
             actor_loss = -mean_v
             actor_loss.backward()
             if self.grad_clip:
@@ -194,11 +197,9 @@ class SACAgent(RL.Agent):
             entropy = -torch.mean(logpis).cpu().detach().item()
             if not self.fix_alpha:
                 self.optim_alpha.zero_grad()
-                alpha_loss = torch.exp(self.logalpha) * \
-                    (entropy - self.desired_ent)
+                alpha_loss = self.alpha * (entropy - self.desired_ent)
                 alpha_loss.backward()
                 self.optim_alpha.step()
-                self.alpha = torch.exp(self.logalpha).detach().item()
 
             self._loss = critics_loss.cpu().detach().item()
             self._mb_v = mean_v.cpu().detach().item()
@@ -209,7 +210,7 @@ class SACAgent(RL.Agent):
                 'SAC/Loss': self._loss,
                 'SAC/Value': self._mb_v,
                 'SAC/Entropy': self._mb_ent,
-                'SAC/Alpha': self.alpha
+                'SAC/Alpha': self.alpha.item()
             }, step=self.manager.step_id)
 
     def post_episode(self):
@@ -217,5 +218,5 @@ class SACAgent(RL.Agent):
             'SAC/Loss': self._loss,
             'SAC/Value': self._mb_v,
             'SAC/Entropy': self._mb_ent,
-            'SAC/Alpha': self.alpha
+            'SAC/Alpha': self.alpha.item()
         }, step=self.manager.step_id)
