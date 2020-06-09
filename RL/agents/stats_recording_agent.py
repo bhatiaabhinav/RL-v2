@@ -100,6 +100,7 @@ class StatsRecordingAgent(RL.Agent):
             'Episode/SPS': self.manager.num_episode_steps / (time.time() - self._episode_start_time),
             'Episode/Reward': self._episode_return,
             'Episode/Cost': self._episode_cost_return,
+            'Episode/Info': self.manager.info
         }, step=self.manager.step_id)
 
     def record_summary_stats(self):
