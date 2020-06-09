@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name="RL-v2",
-    version="2.4.3b",
+    version="2.5.0b",
     author="Abhinav Bhatia",
     author_email="bhatiaabhinav93@gmail.com",
     description=("Some RL algorithms"),
@@ -33,6 +33,7 @@ setup(
         'scipy>=1.4.1',
         'torch>=1.4.0',
         'wandb>=0.8.36',
-        'pybullet>=2.7.8'
+        'pybullet>=2.7.8',
+        'pygame>=1.9.6'
     ]
 )
