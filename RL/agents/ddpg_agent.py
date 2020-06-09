@@ -118,7 +118,7 @@ class DDPGAgent(RL.Agent):
                 obs = torch.from_numpy(toNpFloat32(
                     self.manager.obs, True)).to(device)
                 a = self.a(obs).cpu().detach().numpy()[0]
-                return a
+                return a, {}
         else:
             if self.manager.num_steps < self.no_train_for_steps:
                 logger.debug('Random Action')
@@ -129,7 +129,7 @@ class DDPGAgent(RL.Agent):
                     obs = torch.from_numpy(toNpFloat32(
                         self.manager.obs, True)).to(device)
                     a = self.a(obs, noisy=True).cpu().detach().numpy()[0]
-                    return a
+                    return a, {}
 
     def post_act(self):
         if self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:

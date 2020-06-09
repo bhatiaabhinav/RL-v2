@@ -10,4 +10,4 @@ class RandomPlayAgent(RL.Agent):
         if self.play_for_steps is not None and self.manager.num_steps >= self.play_for_steps:
             return None
         else:
-            return self.env.action_space.sample()
+            return self.env.action_space.sample(), {}

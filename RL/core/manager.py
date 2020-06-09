@@ -26,6 +26,7 @@ class Manager:
         self.num_steps = 0
         self.step_id = 0
         self.num_episode_steps = 0
+        self.episode_step_id = 0
         self.num_episodes = 0
         self.episode_id = 0
         self.episode_type = 0  # 0 means explore, 1 means exploit, 2 means eval
@@ -75,6 +76,7 @@ class Manager:
                 self.sum_of_costs = 0
                 self.done = False
                 self.info = {}
+                self.episode_step_id = 0
                 self.num_episode_steps = 0
                 # pre episode
                 logger.info('Calling algo pre_episode')
@@ -90,8 +92,9 @@ class Manager:
             self.algo.pre_act()
             # act
             logger.debug('Calling algo act')
-            self.action = self.algo.act()
-            logger.debug(f'action #{self.num_episode_steps}: {self.action}')
+            self.action, self.action_info = self.algo.act()
+            logger.debug(
+                f'action #{self.num_episode_steps}: {self.action}. info: {self.action_info}')
             if self.action is None:
                 raise RuntimeError(
                     "The algorithm returned no action. The env cannot be stepped")
@@ -100,6 +103,7 @@ class Manager:
             logger.debug('Stepping env')
             self.obs, self.reward, self.done, self.info = self.env.step(
                 self.action)
+            self.info.update(self.action_info)
             self.obs = np.asarray(self.obs)
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(
@@ -125,7 +129,9 @@ class Manager:
                 logger.info('Calling algo post_episode')
                 self.algo.post_episode()
                 self.episode_id += 1
+            self.episode_step_id += 1
             self.step_id += 1
+        self.episode_step_id -= 1  # reverting the extra increment in the final iteration
         self.step_id -= 1  # reverting the extra increment in final iteration
         logger.info(
             f'------------------ stopping run at num_steps={self.num_steps} and num_episodes={self.num_episodes} ------------------')

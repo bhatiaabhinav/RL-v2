@@ -94,12 +94,12 @@ class DQNCoreAgent(RL.Agent):
                     self.manager.obs, True)).to(device)
                 greedy_a = self.action(
                     self.q(obs), alpha=0).cpu().detach().numpy()[0]
-            return greedy_a
+            return greedy_a, {}
         else:
             logger.debug('Behavior Policy')
             if np.random.rand() < self.epsilon:
                 logger.debug('Random action')
-                return self.env.action_space.sample()
+                return self.env.action_space.sample(), {}
             else:
                 logger.debug('Soft greedy action')
                 with torch.no_grad():
@@ -107,7 +107,7 @@ class DQNCoreAgent(RL.Agent):
                         self.manager.obs, True)).to(device)
                     a = self.action(
                         self.q(obs), alpha=self.ptemp).cpu().detach().numpy()[0]
-                return a
+                return a, {}
 
     def loss(self, states, desired_q):
         return F.smooth_l1_loss(self.q(states), desired_q)
