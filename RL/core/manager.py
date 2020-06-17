@@ -40,7 +40,7 @@ class Manager:
         self.done = True
         self.info = {}
 
-        logger.debug(f'List of envs found {registered_algos}')
+        logger.debug(f'List of algos found {registered_algos}')
         # Create algo:
         logger.info(f'Creating algo {self.algo_id}')
         self.algo = make_algo(self.algo_id, self)  # type: Algorithm
