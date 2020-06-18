@@ -93,7 +93,7 @@ class SACAgent(RL.Agent):
         self.no_train_for_steps = no_train_for_steps
         self.exp_buffer = exp_buffer
         assert alpha >= 0, "alpha must be >= 0"
-        self.logalpha = torch.log(torch.tensor(alpha + 1e-10)).cpu()
+        self.logalpha = torch.log(torch.tensor(alpha + 1e-10)).to(device)
         self.fix_alpha = fix_alpha
         if not fix_alpha:
             self.logalpha.requires_grad = True
@@ -204,12 +204,12 @@ class SACAgent(RL.Agent):
             # Optimize Alpha
             if not self.fix_alpha:
                 self.optim_alpha.zero_grad()
-                alpha_loss = self.alpha * (entropy.item() - self.desired_ent)
+                alpha_loss = self.alpha * (entropy.detach() - self.desired_ent)
                 alpha_loss.backward()
                 self.optim_alpha.step()
 
-            self._loss = critics_loss.cpu().detach().item()
-            self._mb_v = mean_v.cpu().detach().item()
+            self._loss = critics_loss.item()
+            self._mb_v = mean_v.item()
             self._mb_ent = entropy.item()
 
         if self.manager.step_id % 1000 == 0:
