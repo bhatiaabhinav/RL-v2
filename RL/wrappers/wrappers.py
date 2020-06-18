@@ -48,14 +48,9 @@ class ActionSpaceNormalizeWrapper(gym.Wrapper):
 
 
 class LinearFrameStackWrapper(gym.Wrapper):
-    k = 3
-
-    def __init__(self, env, k=None):
+    def __init__(self, env, k=3):
         super().__init__(env)
-        if k is not None:
-            self.k = k
-        else:
-            self.k = LinearFrameStackWrapper.k
+        self.k = k
         self.frames = deque([], maxlen=self.k)
         space = env.observation_space  # type: gym.spaces.Box
         assert len(space.shape) == 1  # can only stack 1-D frames

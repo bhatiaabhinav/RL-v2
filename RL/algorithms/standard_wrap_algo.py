@@ -8,7 +8,7 @@ import RL
 from RL import argparser as p
 from RL.wrappers.atari_wrappers import (ClipRewardEnv, EpisodicLifeEnv,
                                         FireResetEnv, NoopResetEnv)
-from RL.wrappers.wrappers import FrameSkipWrapper
+from RL.wrappers.wrappers import FrameSkipWrapper, LinearFrameStackWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class StandardEnvWrapAlgo(RL.Algorithm):
                 logger.info('Wrapping with ClipRewards')
                 env = ClipRewardEnv(env)
             self.frameskip = args.atari_frameskip
+            self.framestack = args.atari_framestack
         elif '-ram' in self.manager.env_id and '-v4' in self.manager.env_id:  # for playing atari from ram
             logger.info('Atari RAM env detected')
             logger.info('Wrapping with Fire Reset')
@@ -59,10 +60,14 @@ class StandardEnvWrapAlgo(RL.Algorithm):
                 logger.info('Wrapping with ClipRewards')
                 env = ClipRewardEnv(env)
             self.frameskip = args.atari_frameskip
+            self.framestack = args.atari_framestack
         else:
             if args.frameskip > 1:
                 logger.info('Wrapping with Frameskip')
                 env = FrameSkipWrapper(env, skip=args.frameskip)
+            if args.framestack > 1:
+                logger.info('Wrapping with Framestack')
+                env = LinearFrameStackWrapper(env, k=args.framestack)
             self.frameskip = args.frameskip
-            # TODO: Add Framestack here:
+            self.framestack = args.framestack
         return env
