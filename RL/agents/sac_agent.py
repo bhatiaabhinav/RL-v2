@@ -38,8 +38,7 @@ class Actor(nn.Module):
         s = self.conv_model(s)
         mu = self.mu_model(s)
         if not deterministic or return_logpi:
-            logstd = 0.5 * (torch.tanh(self.logstd_model(s)) + 1)  # 0 to 1
-            logstd = -20 + (2 + 20) * logstd  # clamp to -20 to 2
+            logstd = torch.clamp(self.logstd_model(s), -20, 2)
             policy = Normal(mu, torch.exp(logstd))
 
         a = mu if deterministic else policy.rsample()
@@ -51,8 +50,11 @@ class Actor(nn.Module):
         else:
             logpi = torch.sum(policy.log_prob(a), dim=-1)
             a = self.action_activation(a)
-            logpi -= torch.sum(torch.log(torch.clamp(1 -  # noqa
+            logpi_paper -= torch.sum(torch.log(torch.clamp(1 -  # noqa
                                                      a**2, 0, 1) + 1e-6), dim=-1)
+            logpi_spinup -= (2 * (np.log(2) - a -  # noqa
+                                  F.softplus(-2 * a))).sum(axis=1)  # noqa
+            logpi = logpi_paper
             a = a * self.action_scale + self.action_shift
             return a, logpi
 
