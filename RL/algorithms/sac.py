@@ -1,4 +1,5 @@
 import wandb
+from gym.spaces import Box, Discrete
 
 from RL import argparser as p
 from RL import register_algo
@@ -8,6 +9,7 @@ from RL.agents.exp_buff_agent import ExperienceBufferAgent
 from RL.agents.model_copy_agent import ModelCopyAgent
 from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.sac_agent import SACAgent
+from RL.agents.sac_discrete_agent import SACDiscreteAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
 from RL.agents.stats_recording_agent import StatsRecordingAgent
@@ -33,9 +35,18 @@ class SAC(StandardEnvWrapAlgo):
 
         convs = list(filter(lambda x: x != [0], [
                      args.conv1, args.conv2, args.conv3]))
-        sac_agent = self.register_agent(SACAgent('SACAgent', self, convs, args.hiddens,
-                                                 args.train_freq, args.mb_size, args.gamma, args.nsteps,
-                                                 args.td_clip, args.grad_clip, args.lr, args.a_lr, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.sac_alpha, args.fix_alpha))  # type: SACAgent
+        action_space = self.manager.env.action_space
+
+        if isinstance(action_space, Box):
+            Agent_class = SACAgent
+        elif isinstance(action_space, Discrete):
+            Agent_class = SACDiscreteAgent
+        else:
+            raise ValueError(f'Unsupported Action Space {action_space}')
+
+        sac_agent = self.register_agent(Agent_class('SACAgent', self, convs, args.hiddens,
+                                                    args.train_freq, args.mb_size, args.gamma, args.nsteps,
+                                                    args.td_clip, args.grad_clip, args.lr, args.a_lr, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.sac_alpha, args.fix_alpha))  # type: SACAgent
 
         if not args.eval_mode:
             self.register_agent(ModelCopyAgent('TargetNetCopier1', self, sac_agent.q1,
@@ -53,8 +64,9 @@ class SAC(StandardEnvWrapAlgo):
             'R': wandb.run.history.row['Episode/Reward'],
             'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
             'loss': wandb.run.history.row['SAC/Loss'],
-            'mb_v': wandb.run.history.row['SAC/Value'],
-            'alpha': wandb.run.history.row['SAC/Alpha']
+            'v': wandb.run.history.row['SAC/Value'],
+            'alpha': wandb.run.history.row['SAC/Alpha'],
+            'entropy': wandb.run.history.row['SAC/Entropy']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,

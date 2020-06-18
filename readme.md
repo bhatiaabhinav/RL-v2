@@ -59,6 +59,11 @@ python -m RL Pendulum-v0 SAC 1000000 --algo_suffix=test_fast_gc1 --seed=0 --hidd
 python -m RL BipedalWalker-v3 SAC 1000000 --algo_suffix=T200_gc1 --seed=0 --hiddens 64 32 --train_freq=1 --min_explore_steps=10000 --grad_clip=1 --artificial_timelimit=200 --no_render
 ```
 
+#### On a discrete action space domain:
+```bash
+python -m RL LunarLander-v2 SAC 200000 --algo_suffix=T500_n3 --artificial_timelimit=500 --seed=0 --hiddens 64 32 --train_freq=1 --nsteps=3 --min_explore_steps=10000 --no_render --monitor_video_freq=20
+```
+
 ### Hyperparams
 
 To get list of specifiable hyperparams:
