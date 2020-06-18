@@ -34,14 +34,17 @@ class Actor(nn.Module):
         logger.info(
             f'Action Scale={self.action_scale}, Shift={self.action_shift}')
 
-    def forward(self, s, deterministic=False, return_logpi=False):
+    def forward(self, s, deterministic=False, return_logpi=False, rsample=False):
         s = self.conv_model(s)
         mu = self.mu_model(s)
         if not deterministic or return_logpi:
             logstd = torch.clamp(self.logstd_model(s), -20, 2)
             policy = Normal(mu, torch.exp(logstd))
 
-        a = mu if deterministic else policy.rsample()
+        if deterministic:
+            a = mu
+        else:
+            a = policy.rsample() if rsample else policy.sample()
 
         if not return_logpi:
             a = self.action_activation(a)
@@ -50,9 +53,9 @@ class Actor(nn.Module):
         else:
             logpi = torch.sum(policy.log_prob(a), dim=-1)
             a = self.action_activation(a)
-            logpi_paper -= torch.sum(torch.log(torch.clamp(1 -  # noqa
+            logpi_paper = logpi - torch.sum(torch.log(torch.clamp(1 -  # noqa
                                                      a**2, 0, 1) + 1e-6), dim=-1)
-            logpi_spinup -= (2 * (np.log(2) - a -  # noqa
+            logpi_spinup = logpi - (2 * (np.log(2) - a -  # noqa
                                   F.softplus(-2 * a))).sum(axis=1)  # noqa
             logpi = logpi_paper
             a = a * self.action_scale + self.action_shift
@@ -100,6 +103,8 @@ class SACAgent(RL.Agent):
         ac_space = self.env.action_space
 
         self.desired_ent = -ac_space.shape[0]
+        wandb.config.update({'SAC/Desired Entropy': self.desired_ent})
+        logger.info(f'Desired entropy is {self.desired_ent}')
 
         logger.info(f'Creating Actor on device {device}')
         self.a = Actor(
@@ -127,7 +132,8 @@ class SACAgent(RL.Agent):
                 list(self.q2.parameters())
             self.optim_q = optim.Adam(self.q_params, lr=self.lr)
             if not fix_alpha:
-                self.optim_alpha = optim.Adam([self.logalpha], lr=self.lr)
+                logger.info(f'Creating optimizer for alpha (lr={lr})')
+                self.optim_alpha = optim.Adam([self.logalpha], lr=lr)
 
     @property
     def alpha(self):
@@ -161,21 +167,20 @@ class SACAgent(RL.Agent):
                     self.mb_size)
                 states = torch.from_numpy(toNpFloat32(states)).to(device)
                 actions = torch.from_numpy(toNpFloat32(actions)).to(device)
+                rewards = torch.from_numpy(toNpFloat32(rewards)).to(device)
+                dones = torch.from_numpy(toNpFloat32(dones)).to(device)
                 next_states = torch.from_numpy(
                     toNpFloat32(next_states)).to(device)
                 next_actions, next_logpis = self.a(
                     next_states, return_logpi=True)
                 next_target_q = torch.min(
                     self.target_q1(next_states, next_actions), self.target_q2(next_states, next_actions))
-                next_target_v = (next_target_q - self.alpha.item() *  # noqa
-                                 next_logpis).cpu().detach().numpy()
+                next_target_v = (next_target_q - self.alpha * next_logpis)
                 desired_q = rewards + \
-                    (1 - dones.astype(np.int)) * \
-                    (self.gamma ** self.nsteps) * next_target_v
+                    (1 - dones) * (self.gamma ** self.nsteps) * next_target_v
 
             # Optimize Critic
             self.optim_q.zero_grad()
-            desired_q = torch.from_numpy(toNpFloat32(desired_q)).to(device)
             # TODO: TD Error Clip
             critics_loss = 0.5 * (F.mse_loss(self.q1(
                 states, actions), desired_q) + F.mse_loss(self.q2(states, actions), desired_q))
@@ -186,9 +191,10 @@ class SACAgent(RL.Agent):
 
             # Optimize Actor
             self.optim_a.zero_grad()
-            actions, logpis = self.a(states, return_logpi=True)
+            actions, logpis = self.a(states, return_logpi=True, rsample=True)
+            entropy = -torch.mean(logpis)
             q = torch.min(self.q1(states, actions), self.q2(states, actions))
-            mean_v = torch.mean(q - self.alpha.item() * logpis)
+            mean_v = torch.mean(q) + self.alpha * entropy
             actor_loss = -mean_v
             actor_loss.backward()
             if self.grad_clip:
@@ -196,16 +202,15 @@ class SACAgent(RL.Agent):
             self.optim_a.step()
 
             # Optimize Alpha
-            entropy = -torch.mean(logpis).cpu().detach().item()
             if not self.fix_alpha:
                 self.optim_alpha.zero_grad()
-                alpha_loss = self.alpha * (entropy - self.desired_ent)
+                alpha_loss = self.alpha * (entropy.item() - self.desired_ent)
                 alpha_loss.backward()
                 self.optim_alpha.step()
 
             self._loss = critics_loss.cpu().detach().item()
             self._mb_v = mean_v.cpu().detach().item()
-            self._mb_ent = entropy
+            self._mb_ent = entropy.item()
 
         if self.manager.step_id % 1000 == 0:
             wandb.log({

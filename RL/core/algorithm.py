@@ -22,7 +22,8 @@ def make_algo(algo_id, manager):
     '''factory method'''
     if algo_id not in registered_algos:
         try:
-            raise KeyError(f'No algorithm registered by id {algo_id}. Check list of registered algorithms using RL.registered_algos.keys()')
+            raise KeyError(
+                f'No algorithm registered by id {algo_id}. Check list of registered algorithms using RL.registered_algos.keys()')
         except KeyError:
             logging.getLogger(__name__).exception('Exception happened')
             raise
@@ -37,6 +38,7 @@ class Algorithm:
     Base class for implmenting RL algorithms. Concrete implementations would typically override `wrap_env(env)`, `setup` (called after creating a wrapped env) and `act`.
     By defaut, this base class also provides an agent facility for creating algorithms. Create agents subclassing the RL.Agent API and register them in the setup method using `self.register_agent(agent)`. Then this algorithm will automatically call the agents' methods at appropriate times. Read more about the control flow in the readme.
     '''
+
     def __init__(self, algo_id, manager, supports_multiple_envs=False):
         global logger
         logger = logging.getLogger(__name__)
@@ -81,7 +83,8 @@ class Algorithm:
 
     def pre_episode_multienv(self, env_id_nos):
         if not self.supports_multiple_envs:
-            raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
+            raise NotImplementedError(
+                f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
         else:
             [agent.pre_episode_multienv() for agent in self.enabled_agents()]
 
@@ -90,7 +93,8 @@ class Algorithm:
 
     def act(self):
         actions_per_agent = [agent.act() for agent in self.enabled_agents()]
-        actions_per_agent = list(filter(lambda x: x is not None, actions_per_agent))
+        actions_per_agent = list(
+            filter(lambda x: x is not None, actions_per_agent))
         if len(actions_per_agent) == 0:
             return None
         else:
@@ -98,11 +102,14 @@ class Algorithm:
 
     def act_multienv(self):
         if not self.supports_multiple_envs:
-            raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
+            raise NotImplementedError(
+                f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
         else:
             # TODO: Check this logic. The last agent which acted might not have acted in all envs.
-            actions_per_agent = [agent.act_multienv() for agent in self.enabled_agents()]
-            actions_per_agent = list(filter(lambda x: x is not None, actions_per_agent))
+            actions_per_agent = [agent.act_multienv()
+                                 for agent in self.enabled_agents()]
+            actions_per_agent = list(
+                filter(lambda x: x is not None, actions_per_agent))
             if len(actions_per_agent) == 0:
                 return None
             else:
@@ -116,7 +123,8 @@ class Algorithm:
 
     def post_episode_multienv(self, env_id_nos):
         if not self.supports_multiple_envs:
-            raise NotImplementedError(f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
+            raise NotImplementedError(
+                f"Algorithm {self.algo_id} does not support multiple parallel envs yet.")
         else:
             [agent.post_episode_multienv() for agent in self.enabled_agents()]
 
