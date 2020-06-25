@@ -5,6 +5,7 @@ from . import ddpg, dqn, random, sac  # noqa
 
 # standard wrap args
 p.add_argument('--frameskip', default=1, type=int)
+p.add_argument('--framestack', default=1, type=int)
 p.add_argument('--artificial_timelimit', default=None, type=int)
 p.add_argument('--atari_noop_max', default=30, type=int)
 p.add_argument('--atari_frameskip', default=4, type=int)
@@ -58,7 +59,7 @@ p.add_argument('--dqn_ptemp', type=float, default=0)
 
 # SAC args
 p.add_argument('--a_lr', type=float, default=1e-4)
-p.add_argument('--polyak', type=float, default=0.995)
+p.add_argument('--polyak', type=float, default=0.999)
 p.add_argument('--sac_alpha', type=float, default=0.2)
 p.add_argument('--fix_alpha', action='store_true')
 
