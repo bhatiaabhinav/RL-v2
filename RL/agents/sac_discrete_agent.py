@@ -24,10 +24,12 @@ class Actor(FFModel):
         self.linear_layers[-1].bias.data.fill_(0)
 
     def forward(self, x, deterministic=False, return_pi=False):
-        logits = super().forward(x).clamp(-20, 0)
+        logits = super().forward(x)  # type: torch.Tensor
         if deterministic and not return_pi:
             return logits.argmax(dim=-1)
-        pis = torch.exp(logits)
+        logits_max, logits_argmax = torch.max(logits, dim=-1, keepdim=True)
+        logits_shifted = logits - logits_max
+        pis = torch.exp(logits_shifted)
         pis = pis / pis.sum(dim=-1, keepdim=True)
         policy = Categorical(logits=logits)
         if deterministic:
@@ -41,8 +43,10 @@ class Actor(FFModel):
             return a
 
     def pi(self, x):
-        logpis = super().forward(x).clamp(-20, 0)
-        pis = torch.exp(logpis)
+        logits = super().forward(x)  # type: torch.Tensor
+        logits_max, logits_argmax = torch.max(logits, dim=-1, keepdim=True)
+        logits_shifted = logits - logits_max
+        pis = torch.exp(logits_shifted)
         pis = pis / pis.sum(dim=-1, keepdim=True)
         return pis
 
@@ -187,7 +191,7 @@ class SACDiscreteAgent(RL.Agent):
             critics_loss = 0.5 * \
                 (F.smooth_l1_loss(self.q1(states), q1) +  # noqa
                  F.smooth_l1_loss(self.q2(states), q2))
-            critics_loss.backward()
+            critics_loss.backward(retain_graph=True)
             if self.grad_clip is not None:
                 nn.utils.clip_grad_norm_(self.q_params, self.grad_clip)
             self.optim_q.step()
@@ -195,12 +199,20 @@ class SACDiscreteAgent(RL.Agent):
             # Optimize Actor
             self.optim_a.zero_grad()
             q = torch.min(q1, q2)  # type: torch.Tensor
+            print('q', q)
             pis = self.a.pi(states)
+            print('pis', pis)
             logpis = torch.log(pis)
+            print('logpis', logpis)
             entropy = (-pis * logpis).sum(dim=-1).mean()
+            print('entropy', entropy)
             mean_v = (pis * q).sum(dim=-1).mean() + self.alpha * entropy
+            print('mean_v', mean_v)
             actor_loss = -mean_v
+            print('actor_loss', actor_loss)
             actor_loss.backward()
+            for p in self.a.parameters():
+                print('grad_a', p.grad)
             if self.grad_clip:
                 nn.utils.clip_grad_norm_(self.a.parameters(), self.grad_clip)
             self.optim_a.step()
