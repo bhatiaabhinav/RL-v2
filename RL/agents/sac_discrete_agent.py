@@ -80,13 +80,14 @@ class SACDiscreteAgent(RL.Agent):
         obs_space = self.env.observation_space
         ac_space = self.env.action_space
 
-        self.desired_ent = np.log((ac_space.n + 1) / 2)
+        self.desired_ent = np.log(1 + 0.1 * ac_space.n)
         wandb.config.update({'SAC/Desired Entropy': self.desired_ent})
         logger.info(f'Desired entropy is {self.desired_ent}')
 
         logger.info(f'Creating Actor on device {device}')
         self.a = Actor(obs_space.shape, convs,
                        hidden_layers, ac_space.n).to(device)
+        logger.info(str(self.a))
 
         logger.info(f'Creating Critics on device {device}')
         self.q1 = Critic(
