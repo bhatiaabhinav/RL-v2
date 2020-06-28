@@ -46,7 +46,7 @@ class Actor(FFModel):
         logits = super().forward(x)  # type: torch.Tensor
         logits_max, logits_argmax = torch.max(logits, dim=-1, keepdim=True)
         logits_shifted = logits - logits_max
-        pis = torch.exp(logits_shifted)
+        pis = torch.exp(logits_shifted).clamp(1e-9, 1)  # trim probabilities.
         pis = pis / pis.sum(dim=-1, keepdim=True)
         return pis
 
