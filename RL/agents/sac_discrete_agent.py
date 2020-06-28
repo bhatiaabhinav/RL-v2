@@ -199,20 +199,12 @@ class SACDiscreteAgent(RL.Agent):
             # Optimize Actor
             self.optim_a.zero_grad()
             q = torch.min(q1, q2)  # type: torch.Tensor
-            print('q', q)
             pis = self.a.pi(states)
-            print('pis', pis)
             logpis = torch.log(pis)
-            print('logpis', logpis)
             entropy = (-pis * logpis).sum(dim=-1).mean()
-            print('entropy', entropy)
             mean_v = (pis * q).sum(dim=-1).mean() + self.alpha * entropy
-            print('mean_v', mean_v)
             actor_loss = -mean_v
-            print('actor_loss', actor_loss)
             actor_loss.backward()
-            for p in self.a.parameters():
-                print('grad_a', p.grad)
             if self.grad_clip:
                 nn.utils.clip_grad_norm_(self.a.parameters(), self.grad_clip)
             self.optim_a.step()
