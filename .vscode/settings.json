@@ -4,5 +4,8 @@
     "editor.codeActionsOnSave": {
         "source.fixAll": false,
         "source.organizeImports": true
+    },
+    "files.watcherExclude": {
+        "**/env/**": true
     }
 }

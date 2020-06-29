@@ -59,6 +59,7 @@ pybullet==2.7.8
 pycodestyle==2.5.0
 pydot==1.4.1
 pyflakes==2.1.1
+pygame==1.9.6
 pyglet==1.5.0
 pylint==2.4.4
 pyparsing==2.4.6
@@ -76,10 +77,11 @@ six==1.14.0
 smmap==3.0.4
 subprocess32==3.5.4
 termcolor==1.1.0
+toml==0.10.1
 torch==1.4.0
 typed-ast==1.4.1
 urllib3==1.25.9
-wandb==0.8.36
+wandb==0.9.1
 watchdog==0.10.2
 wcwidth==0.1.8
 Werkzeug==1.0.0
