@@ -84,7 +84,7 @@ class SACDiscreteAgent(RL.Agent):
         obs_space = self.env.observation_space
         ac_space = self.env.action_space
 
-        self.desired_ent = np.log(1 + 0.1 * ac_space.n)
+        self.desired_ent = 0.1 * np.log(ac_space.n)
         wandb.config.update({'SAC/Desired Entropy': self.desired_ent})
         logger.info(f'Desired entropy is {self.desired_ent}')
 
@@ -114,8 +114,8 @@ class SACDiscreteAgent(RL.Agent):
                 list(self.q2.parameters())
             self.optim_q = optim.Adam(self.q_params, lr=self.lr)
             if not fix_alpha:
-                logger.info(f'Creating optimizer for alpha (lr={lr})')
-                self.optim_alpha = optim.Adam([self.logalpha], lr=lr)
+                logger.info(f'Creating optimizer for alpha (lr={0.001})')
+                self.optim_alpha = optim.Adam([self.logalpha], lr=0.001)
 
     @property
     def alpha(self):
