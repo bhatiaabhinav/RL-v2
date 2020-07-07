@@ -6,7 +6,6 @@ import sys
 import wandb
 
 import RL
-import RL.algorithms
 from RL import argparser as p
 
 p.add_argument('env_id')
@@ -18,13 +17,13 @@ p.add_argument('--num_episodes_to_run', default=None, type=int)
 p.add_argument('--rl_logdir', default=os.getenv('RL_LOGDIR', 'logs'))
 p.add_argument('--debug', action="store_true")
 p.add_argument('--no_logs', action="store_true")
+p.add_argument('--no_gpu', action="store_true")
 p.add_argument('--overwrite', action="store_true")
 
-args = p.parse_args()
+args, unknown = p.parse_known_args()
 
-if 'BulletEnv-' in args.env_id:
-    import pybullet  # noqa
-    import pybullet_envs  # noqa
+if args.no_gpu:
+    os.environ['CUDA_VISIBLE_DEVICES'] = ' '
 
 logdir = os.path.join(args.rl_logdir, args.env_id,
                       args.algo_id + '_' + args.algo_suffix)
@@ -65,9 +64,14 @@ with open(os.path.join(logdir, 'args.json'), 'w') as f:
 wandb.init(dir=logdir, project=args.env_id,
            name=f'{args.algo_id}_{args.algo_suffix}', monitor_gym=True)
 wandb.config.update(args)
-wandb.save(logfile)
+# wandb.save(logfile)
 
 try:
+    import RL.algorithms
+    if 'BulletEnv-' in args.env_id:
+        import pybullet  # noqa
+        import pybullet_envs  # noqa
+    args = p.parse_args()
     m = RL.Manager(args.env_id, args.algo_id, args.algo_suffix, num_steps_to_run=args.num_steps_to_run,
                    num_episodes_to_run=args.num_episodes_to_run, logdir=logdir)
     m.run()
