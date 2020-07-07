@@ -29,3 +29,6 @@ class SeedingAgent(RL.Agent):
             torch.manual_seed(self.seed)
             self.env.seed(self.seed)
             self.env.action_space.seed(self.seed)
+
+    def pre_episode(self):
+        self.env.seed(self.seed + self.manager.episode_id)
