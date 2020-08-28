@@ -1,3 +1,6 @@
+import os
+
+import torch
 import wandb
 
 from RL import argparser as p
@@ -8,6 +11,8 @@ from RL.agents.episode_type_control_agent import EpisodeTypeControlAgent
 from RL.agents.exp_buff_agent import ExperienceBufferAgent
 from RL.agents.linear_anneal_agent import LinearAnnealingAgent
 from RL.agents.model_copy_agent import ModelCopyAgent
+from RL.agents.model_load_agent import ModelLoadAgent
+from RL.agents.periodic_agent import PeriodicAgent
 from RL.agents.reward_scaling_agent import RewardScalingAgent
 from RL.agents.seeding_agent import SeedingAgent
 from RL.agents.simple_render_agent import SimpleRenderAgent
@@ -25,14 +30,17 @@ class DQN(StandardEnvWrapAlgo):
 
         self.register_agent(EpisodeTypeControlAgent('EpisodeTypeController', self, args.eval_mode,
                                                     args.min_explore_steps, args.exploit_freq))  # type: EpisodeTypeControlAgent
-
+        if args.eval_mode:
+            model_loader = self.register_agent(ModelLoadAgent('ModelLoader', self, None, os.path.join(
+                args.rl_logdir, args.env_id, args.eval_run, 'checkpoints'), in_sequence=args.eval_in_sequence, wait_for_new=True))
         if not args.eval_mode:
             exp_buff_agent = self.register_agent(ExperienceBufferAgent(
                 "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
-        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens,
-                                                          args.train_freq, args.mb_size, args.double_dqn, args.gamma, args.nsteps,
-                                                          args.td_clip, args.grad_clip, args.lr, args.ep, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.dqn_ptemp))  # type: DQNCoreAgent
+        dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens, args.train_freq, args.mb_size, args.double_dqn, args.dueling_dqn,
+                                                          args.gamma, args.nsteps, args.td_clip, args.grad_clip, args.lr, args.ep, args.noisy_explore, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.dqn_ptemp))  # type: DQNCoreAgent
+        if args.eval_mode:
+            model_loader.model = dqn_core_agent.q
 
         if not args.eval_mode:
             self.register_agent(LinearAnnealingAgent('EpsilonAnnealer', self, dqn_core_agent,
@@ -40,6 +48,9 @@ class DQN(StandardEnvWrapAlgo):
 
             self.register_agent(ModelCopyAgent('TargetNetCopier', self, dqn_core_agent.q,
                                                dqn_core_agent.target_q, args.target_q_freq, args.target_q_polyak, args.min_explore_steps))
+            self.register_agent(PeriodicAgent('ModelSaver', self, lambda step, ep: (torch.save(
+                dqn_core_agent.q.state_dict(), os.path.join(self.manager.logdir, 'checkpoints', f'step-{step}-ep+{ep}.model')), torch.save(
+                dqn_core_agent.q.state_dict(), os.path.join(self.manager.logdir, 'checkpoints', f'latest.model'))), step_freq=args.model_save_freq))
 
         self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
                                                 gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip))  # type: StatsRecordingAgent
@@ -51,8 +62,9 @@ class DQN(StandardEnvWrapAlgo):
             'R': wandb.run.history.row['Episode/Reward'],
             'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
             'loss': wandb.run.history.row['DQN/Loss'],
-            'mb_v': wandb.run.history.row['DQN/Value'],
-            'ep': wandb.run.history.row['DQN/Epsilon']
+            'mb_V': wandb.run.history.row['DQN/Value'],
+            'ep': wandb.run.history.row['DQN/Epsilon'],
+            'mb_QStd': wandb.run.history.row['DQN/Q_Std']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,

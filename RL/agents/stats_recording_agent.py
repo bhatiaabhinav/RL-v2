@@ -21,6 +21,7 @@ class StatsRecordingAgent(RL.Agent):
         self.cost_gamma = cost_gamma
         self.record_undiscounted = record_undiscounted
         self.frameskip = frameskip
+        self.last_recorded_for_step_id = -1
 
     def start(self):
         self._start_time = time.time()
@@ -73,7 +74,9 @@ class StatsRecordingAgent(RL.Agent):
         self._cr10000 = self.new_moving_mean(self._cr10000, c, self._costs)
 
         if self.manager.step_id % 1000 == 0:
-            self.record_summary_stats()
+            if self.manager.step_id > self.last_recorded_for_step_id:
+                self.record_summary_stats()
+                self.last_recorded_for_step_id = self.manager.step_id
 
     def post_episode(self):
         self._rpe = self.new_mean(
@@ -87,6 +90,7 @@ class StatsRecordingAgent(RL.Agent):
 
         self.record_episode_stats()
         self.record_summary_stats()
+        self.last_recorded_for_step_id = self.manager.step_id
 
     def pre_close(self):
         self.record_summary_stats()

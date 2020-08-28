@@ -7,7 +7,7 @@ from RL.utils.util_fns import conv2d_shape_out, convT2d_shape_out
 
 
 class FFModel(nn.Module):
-    def __init__(self, input_shape, convs, linears, flatten=False, unflatten_shape=None, deconvs=[], act_fn_callable=lambda: nn.ReLU(), bn=False, ln=False):
+    def __init__(self, input_shape, convs, linears, flatten=False, unflatten_shape=None, deconvs=[], act_fn_callable=lambda: nn.ReLU(), bn=False, ln=False, apply_act_output=False):
         super().__init__()
         self.input_shape = input_shape
         self.bn = bn
@@ -37,7 +37,7 @@ class FFModel(nn.Module):
                 shape = conv2d_shape_out(
                     shape, channels, kernel, stride, padding)
                 self.num_layers += 1
-                if self.num_layers < total_layers:
+                if self.num_layers < total_layers or apply_act_output:
                     if bn:
                         self.conv_layers.append(nn.BatchNorm2d(shape[0]))
                     self.conv_layers.append(act_fn_callable())
@@ -61,7 +61,7 @@ class FFModel(nn.Module):
                 self.linear_layers.append(hidden_layer)
                 num_features = h
                 self.num_layers += 1
-                if self.num_layers < total_layers:
+                if self.num_layers < total_layers or apply_act_output:
                     if ln:
                         self.linear_layers.append(nn.LayerNorm([num_features]))
                     elif bn:
@@ -85,7 +85,7 @@ class FFModel(nn.Module):
                 shape = convT2d_shape_out(
                     shape, channels, kernel, stride, padding)
                 self.num_layers += 1
-                if self.num_layers < total_layers:
+                if self.num_layers < total_layers or apply_act_output:
                     if bn:
                         self.deconv_layers.append(nn.BatchNorm2d(shape[0]))
                     self.deconv_layers.append(act_fn_callable())

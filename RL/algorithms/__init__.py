@@ -14,7 +14,6 @@ p.add_argument('--atari_episodic_life', action='store_true')
 p.add_argument('--atari_clip_rewards', action='store_true')
 p.add_argument('--no_monitor', action='store_true')
 p.add_argument('--monitor_video_freq', default=100, type=int)
-p.add_argument('--eval_mode', action='store_true')
 
 
 # standard args
@@ -29,6 +28,9 @@ p.add_argument('--frameskip', type=int, default=1)
 p.add_argument('--no_render', action='store_true')
 
 p.add_argument('--eval_mode', action='store_true')
+p.add_argument('--eval_run', type=str, default=None)
+p.add_argument('--eval_in_sequence', action='store_true')
+p.add_argument('--model_save_freq', type=int, default=100000)
 p.add_argument('--min_explore_steps', type=int, default=50000)
 p.add_argument('--exploit_freq', type=int, default=None)
 p.add_argument('--nsteps', type=int, default=1)
@@ -55,6 +57,8 @@ p.add_argument('--target_q_polyak', type=float, default=0)
 p.add_argument('--ep', type=float, default=0.1)
 p.add_argument('--ep_anneal_steps', type=int, default=1000000)
 p.add_argument('--double_dqn', action='store_true')
+p.add_argument('--dueling_dqn', action='store_true')
+p.add_argument('--noisy_explore', action='store_true')
 p.add_argument('--dqn_ptemp', type=float, default=0)
 
 # SAC args

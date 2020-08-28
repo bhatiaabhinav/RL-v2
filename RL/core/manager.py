@@ -1,5 +1,6 @@
 import logging
 import time
+from logging import log
 
 import gym
 import numpy as np
@@ -69,6 +70,7 @@ class Manager:
                     f'------------------ Reseting env. Staring episode #{self.num_episodes} -----------------')
                 self.prev_obs = self.obs
                 self.obs = self.env.reset()
+                logger.info('reseted')
                 self.obs = np.asarray(self.obs)
                 self.reward = 0
                 self.sum_of_rewards = 0
@@ -82,7 +84,7 @@ class Manager:
                 logger.info('Calling algo pre_episode')
                 self.algo.pre_episode()
             if logger.isEnabledFor(logging.DEBUG):
-                if len(self.obs.shape) == 1:
+                if len(self.obs.shape) == 1 and len(self.obs) <= 10:
                     logger.debug(f'obs #{self.num_episode_steps}: {self.obs}')
                 else:
                     logger.debug(
