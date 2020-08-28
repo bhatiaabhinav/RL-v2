@@ -4,6 +4,7 @@ import shutil
 import sys
 
 import wandb
+from wandb import config
 
 import RL
 from RL import argparser as p
@@ -11,6 +12,7 @@ from RL import argparser as p
 p.add_argument('env_id')
 p.add_argument('algo_id')
 p.add_argument('num_steps_to_run', type=int)
+p.add_argument('--tags', nargs='*', default=[], type=str)
 DEFAULT_ALGO_SUFFIX = ''
 p.add_argument('--algo_suffix', default=DEFAULT_ALGO_SUFFIX)
 p.add_argument('--num_episodes_to_run', default=None, type=int)
@@ -27,6 +29,7 @@ if args.no_gpu:
 
 logdir = os.path.join(args.rl_logdir, args.env_id,
                       args.algo_id + '_' + args.algo_suffix)
+checkpoints_dir = os.path.join(logdir, 'checkpoints')
 logfile = os.path.join(logdir, 'logs.log')
 
 deleted_prev_logs = False
@@ -43,6 +46,7 @@ if os.path.isdir(logdir):
             "You already ran this algo on this env using this algo_suffix. Change something! Or set --overwrite flag to overwrite previous logs")
 
 os.makedirs(logdir)
+os.makedirs(checkpoints_dir)
 level = logging.DEBUG if args.debug else logging.INFO
 if args.no_logs:
     level = logging.WARN
@@ -62,9 +66,17 @@ with open(os.path.join(logdir, 'args.json'), 'w') as f:
     f.write(str(vars(args)))
 
 wandb.init(dir=logdir, project=args.env_id,
-           name=f'{args.algo_id}_{args.algo_suffix}', monitor_gym=True)
+           name=f'{args.algo_id}_{args.algo_suffix}', monitor_gym=True, tags=args.tags)
 wandb.config.update(args)
-# wandb.save(logfile)
+
+for tag in args.tags:
+    wandb.config.update({tag: True})
+# wandb.config.update(unknown)
+wandb.save(logdir)
+wandb.save(checkpoints_dir)
+images_dir = os.path.join(logdir, 'images')
+os.makedirs(images_dir)
+wandb.save(images_dir)
 
 try:
     import RL.algorithms
@@ -72,6 +84,7 @@ try:
         import pybullet  # noqa
         import pybullet_envs  # noqa
     args = p.parse_args()
+    wandb.config.update(args)
     m = RL.Manager(args.env_id, args.algo_id, args.algo_suffix, num_steps_to_run=args.num_steps_to_run,
                    num_episodes_to_run=args.num_episodes_to_run, logdir=logdir)
     m.run()
