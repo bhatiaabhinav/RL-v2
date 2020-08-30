@@ -60,7 +60,10 @@ class DQNModel(nn.Module):
         noisy = noisy and self.noisy
         if noisy:
             logstd = torch.clamp(self.logstd(convs), -20, 2)
-            std = torch.exp(logstd)
+            with torch.no_grad():
+                av_a = torch.mean(
+                    q - torch.max(q, axis=-1, keepdims=True)[0]).detach()
+            std = 0.5 * abs(av_a) * torch.exp(logstd)
             noise = std * torch.normal(0, torch.ones_like(std))
             q_noisy = q + noise
         else:
