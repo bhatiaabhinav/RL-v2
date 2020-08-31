@@ -101,7 +101,8 @@ class DQNCoreAgent(RL.Agent):
                           convs, hidden_layers, self.env.action_space.n, dueling=dueling_dqn, noisy=noisy_explore)
         self.q.to(device)
         logger.info(str(self.q))
-        wandb.watch([self.q], log='all', log_freq=1000 // train_freq)
+        if logger.isEnabledFor(logging.DEBUG):
+            wandb.watch([self.q], log='all', log_freq=1000 // train_freq)
         if not eval_mode:
             logger.info(f'Creating target network on device {device}')
             self.target_q = DQNModel(self.env.observation_space.shape, convs, hidden_layers,

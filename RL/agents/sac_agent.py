@@ -116,7 +116,9 @@ class SACAgent(RL.Agent):
         self.q2 = Critic(
             obs_space.shape, ac_space.shape[0], convs, hidden_layers).to(device)
         logger.info(str(self.q1))
-        wandb.watch([self.a, self.q1], log='all', log_freq=1000 // train_freq)
+        if logger.isEnabledFor(logging.DEBUG):
+            wandb.watch([self.a, self.q1], log='all',
+                        log_freq=1000 // train_freq)
 
         if not eval_mode:
             logger.info(f'Creating target critics on device {device}')
