@@ -36,6 +36,8 @@ p.add_argument('--exploit_freq', type=int, default=None)
 p.add_argument('--nsteps', type=int, default=1)
 p.add_argument('--exp_buff_len', type=int, default=1000000)
 p.add_argument('--train_freq', type=int, default=4)
+p.add_argument('--sgd_steps', type=int, default=1,
+               help='number of gradient descent updates per training step')
 p.add_argument('--lr', type=float, default=1e-4)
 p.add_argument('--mb_size', type=int, default=32)
 p.add_argument('--td_clip', type=float, default=None)

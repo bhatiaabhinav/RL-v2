@@ -74,11 +74,12 @@ class DQNModel(nn.Module):
 
 
 class DQNCoreAgent(RL.Agent):
-    def __init__(self, name: str, algo: RL.Algorithm, convs: List, hidden_layers: List, train_freq: int, mb_size: int, double_dqn: bool, dueling_dqn: bool, gamma: float, nsteps: int, td_clip: float, grad_clip: float, lr: float, epsilon: float, noisy_explore: bool, eval_mode: bool, no_train_for_steps: int, exp_buffer: ExperienceBuffer, policy_temperature: float = 0):
+    def __init__(self, name: str, algo: RL.Algorithm, convs: List, hidden_layers: List, train_freq: int, sgd_steps: int, mb_size: int, double_dqn: bool, dueling_dqn: bool, gamma: float, nsteps: int, td_clip: float, grad_clip: float, lr: float, epsilon: float, noisy_explore: bool, eval_mode: bool, no_train_for_steps: int, exp_buffer: ExperienceBuffer, policy_temperature: float = 0):
         super().__init__(name, algo, supports_multiple_envs=False)
         self.convs = convs
         self.hidden_layers = hidden_layers
         self.train_freq = train_freq
+        self.sgd_steps = sgd_steps
         self.mb_size = mb_size
         self.double_dqn = double_dqn
         self.dueling_dqn = dueling_dqn
@@ -179,61 +180,65 @@ class DQNCoreAgent(RL.Agent):
                         self.q(obs, noisy=True)[0], alpha=self.ptemp).cpu().detach().numpy()[0]
                 return a, {}
 
+    def sgd_update(self):
+        logger.debug('Training')
+        with torch.no_grad():
+            states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
+                self.mb_size)
+            states = torch.from_numpy(toNpFloat32(states)).to(device)
+            next_states = torch.from_numpy(
+                toNpFloat32(next_states)).to(device)
+            next_target_q = self.target_q(next_states, noisy=True)[0]
+            if self.double_dqn:
+                next_q = self.q(next_states, noisy=True)[0]
+                next_pi = self.pi(next_q, self.ptemp)
+                next_target_v = self.v(
+                    next_target_q, next_pi, self.ptemp).cpu().detach().numpy()
+            else:
+                next_target_v = self.v(
+                    next_target_q, None, self.ptemp).cpu().detach().numpy()
+            desired_q = rewards + \
+                (1 - dones.astype(np.int)) * \
+                (self.gamma ** self.nsteps) * next_target_v
+
+        '''-------------------begin optimization----------------'''
+        self.optim.zero_grad()
+
+        '''current q'''
+        q, q_mean, q_std = self.q(states, noisy=True)
+        # print(q_mean)
+
+        '''to calculate desired q in shape of q:'''
+        q_detached = np.copy(q.cpu().detach().numpy())
+        all_states_idx = np.arange(self.mb_size)
+        td_errors = desired_q - q_detached[all_states_idx, actions]
+        if self.td_clip is not None:
+            logger.debug('Doing TD error clipping')
+            td_errors = np.clip(td_errors, -self.td_clip, self.td_clip)
+            # print(td_errors)
+        q_detached[all_states_idx, actions] = q_detached[all_states_idx, actions] + \
+            td_errors  # this is now desired_q
+        desired_q = q_detached
+
+        '''loss and gradient clip'''
+        loss = F.smooth_l1_loss(q, torch.from_numpy(desired_q).to(device))
+        loss.backward()
+        if self.grad_clip is not None:
+            logger.debug('Doing grad clipping')
+            torch.nn.utils.clip_grad_norm_(
+                self.q.parameters(), self.grad_clip)
+
+        self.optim.step()
+        '''====================optimization done================'''
+
+        v = self.v(q_mean, None, self.ptemp)
+        self._loss, self._mb_v, self._mb_q_std = loss.cpu().detach(
+        ).item(), torch.mean(v).item(), torch.mean(q_std).item()
+
     def post_act(self):
         if self.manager.episode_type < 2 and self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
-            logger.debug('Training')
-            with torch.no_grad():
-                states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
-                    self.mb_size)
-                states = torch.from_numpy(toNpFloat32(states)).to(device)
-                next_states = torch.from_numpy(
-                    toNpFloat32(next_states)).to(device)
-                next_target_q = self.target_q(next_states, noisy=True)[0]
-                if self.double_dqn:
-                    next_q = self.q(next_states, noisy=True)[0]
-                    next_pi = self.pi(next_q, self.ptemp)
-                    next_target_v = self.v(
-                        next_target_q, next_pi, self.ptemp).cpu().detach().numpy()
-                else:
-                    next_target_v = self.v(
-                        next_target_q, None, self.ptemp).cpu().detach().numpy()
-                desired_q = rewards + \
-                    (1 - dones.astype(np.int)) * \
-                    (self.gamma ** self.nsteps) * next_target_v
-
-            '''-------------------begin optimization----------------'''
-            self.optim.zero_grad()
-
-            '''current q'''
-            q, q_mean, q_std = self.q(states, noisy=True)
-            # print(q_mean)
-
-            '''to calculate desired q in shape of q:'''
-            q_detached = np.copy(q.cpu().detach().numpy())
-            all_states_idx = np.arange(self.mb_size)
-            td_errors = desired_q - q_detached[all_states_idx, actions]
-            if self.td_clip is not None:
-                logger.debug('Doing TD error clipping')
-                td_errors = np.clip(td_errors, -self.td_clip, self.td_clip)
-                # print(td_errors)
-            q_detached[all_states_idx, actions] = q_detached[all_states_idx, actions] + \
-                td_errors  # this is now desired_q
-            desired_q = q_detached
-
-            '''loss and gradient clip'''
-            loss = F.smooth_l1_loss(q, torch.from_numpy(desired_q).to(device))
-            loss.backward()
-            if self.grad_clip is not None:
-                logger.debug('Doing grad clipping')
-                torch.nn.utils.clip_grad_norm_(
-                    self.q.parameters(), self.grad_clip)
-
-            self.optim.step()
-            '''====================optimization done================'''
-
-            v = self.v(q_mean, None, self.ptemp)
-            self._loss, self._mb_v, self._mb_q_std = loss.cpu().detach(
-            ).item(), torch.mean(v).item(), torch.mean(q_std).item()
+            for sgd_step in range(self.sgd_steps):
+                self.sgd_update()
 
         if self.manager.step_id % 1000 == 0:
             wandb.log({
