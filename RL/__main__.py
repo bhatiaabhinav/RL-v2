@@ -59,11 +59,11 @@ if args.algo_suffix == '':
     logger.warn(
         f'You are running this algo using the default algo suffix. This is highly discouraged')
 
-with open(os.path.join(logdir, 'command.sh'), 'w') as f:
-    f.write(' '.join(['python', '-m', 'RL'] + sys.argv[1:]))
+with open(os.path.join(logdir, 'command.sh'), 'w') as command_file:
+    command_file.write(' '.join(['python', '-m', 'RL'] + sys.argv[1:]))
 
-with open(os.path.join(logdir, 'args.json'), 'w') as f:
-    f.write(str(vars(args)))
+with open(os.path.join(logdir, 'args.json'), 'w') as args_file:
+    args_file.write(str(vars(args)))
 
 wandb.init(dir=logdir, project=args.env_id,
            name=f'{args.algo_id}_{args.algo_suffix}', monitor_gym=True, tags=args.tags)
@@ -72,11 +72,13 @@ wandb.config.update(args)
 for tag in args.tags:
     wandb.config.update({tag: True})
 # wandb.config.update(unknown)
-wandb.save(logdir)
+wandb.save(logfile)
+# wandb.save(command_file)
+# wandb.save(args_file)
 wandb.save(checkpoints_dir)
-images_dir = os.path.join(logdir, 'images')
-os.makedirs(images_dir)
-wandb.save(images_dir)
+# images_dir = os.path.join(logdir, 'images')
+# os.makedirs(images_dir)
+# wandb.save(images_dir)
 
 try:
     import RL.algorithms
