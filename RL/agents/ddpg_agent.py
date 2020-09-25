@@ -12,6 +12,7 @@ from RL.utils.standard_models import FFModel
 from RL.utils.util_fns import toNpFloat32
 
 logger = logging.getLogger(__name__)
+ldebug = logger.isEnabledFor(logging.DEBUG)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
@@ -100,7 +101,7 @@ class DDPGAgent(RL.Agent):
         self.q = Critic(obs_space.shape,
                         ac_space.shape[0], convs, hidden_layers).to(device)
         logger.info(str(self.q))
-        if logger.isEnabledFor(logging.DEBUG):
+        if ldebug:
             wandb.watch([self.a, self.q], log='all',
                         log_freq=1000 // train_freq)
 
@@ -115,7 +116,7 @@ class DDPGAgent(RL.Agent):
 
     def act(self):
         if self.manager.episode_type > 0:
-            logger.debug('Exploit Action')
+            ldebug and logger.debug('Exploit Action')
             with torch.no_grad():
                 obs = torch.from_numpy(toNpFloat32(
                     self.manager.obs, True)).to(device)
@@ -123,10 +124,10 @@ class DDPGAgent(RL.Agent):
                 return a, {}
         else:
             if self.manager.num_steps < self.no_train_for_steps:
-                logger.debug('Random Action')
+                ldebug and logger.debug('Random Action')
                 return self.env.action_space.sample()
             else:
-                logger.debug('Noisy Action')
+                ldebug and logger.debug('Noisy Action')
                 with torch.no_grad():
                     obs = torch.from_numpy(toNpFloat32(
                         self.manager.obs, True)).to(device)
@@ -135,7 +136,7 @@ class DDPGAgent(RL.Agent):
 
     def post_act(self):
         if self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
-            logger.debug('Training')
+            ldebug and logger.debug('Training')
             with torch.no_grad():
                 states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
                     self.mb_size)

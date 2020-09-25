@@ -3,6 +3,7 @@ import logging
 import RL
 
 logger = logging.getLogger(__name__)
+ldebug = logger.isEnabledFor(logging.DEBUG)
 
 
 class RewardScalingAgent(RL.Agent):
@@ -14,6 +15,6 @@ class RewardScalingAgent(RL.Agent):
             f"Reward Scaling={reward_scaling}, Cost Scaling={cost_scaling}")
 
     def post_act(self):
-        logger.debug('Scaling rewards and costs')
+        ldebug and logger.debug('Scaling rewards and costs')
         self.manager.reward *= self.reward_scaling
         self.manager.cost *= self.cost_scaling

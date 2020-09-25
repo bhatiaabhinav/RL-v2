@@ -4,7 +4,6 @@ import shutil
 import sys
 
 import wandb
-from wandb import config
 
 import RL
 from RL import argparser as p
@@ -73,8 +72,7 @@ for tag in args.tags:
     wandb.config.update({tag: True})
 # wandb.config.update(unknown)
 wandb.save(logfile)
-# wandb.save(command_file)
-# wandb.save(args_file)
+wandb.save(logdir)
 wandb.save(checkpoints_dir)
 # images_dir = os.path.join(logdir, 'images')
 # os.makedirs(images_dir)

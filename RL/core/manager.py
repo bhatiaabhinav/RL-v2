@@ -1,6 +1,5 @@
 import logging
 import time
-from logging import log
 
 import gym
 import numpy as np
@@ -8,6 +7,7 @@ import numpy as np
 from .algorithm import Algorithm, make_algo, registered_algos
 
 logger = logging.getLogger(__name__)
+ldebug = logger.isEnabledFor(logging.DEBUG)
 
 
 class Manager:
@@ -41,7 +41,7 @@ class Manager:
         self.done = True
         self.info = {}
 
-        logger.debug(f'List of algos found {registered_algos}')
+        ldebug and logger.debug(f'List of algos found {registered_algos}')
         # Create algo:
         logger.info(f'Creating algo {self.algo_id}')
         self.algo = make_algo(self.algo_id, self)  # type: Algorithm
@@ -83,34 +83,35 @@ class Manager:
                 # pre episode
                 logger.info('Calling algo pre_episode')
                 self.algo.pre_episode()
-            if logger.isEnabledFor(logging.DEBUG):
+            if ldebug:
                 if len(self.obs.shape) == 1 and len(self.obs) <= 10:
-                    logger.debug(f'obs #{self.num_episode_steps}: {self.obs}')
+                    ldebug and logger.debug(
+                        f'obs #{self.num_episode_steps}: {self.obs}')
                 else:
-                    logger.debug(
+                    ldebug and logger.debug(
                         f'obs #{self.num_episode_steps} shape: {self.obs.shape}')
             # pre act
-            logger.debug('Calling algo pre_act')
+            ldebug and logger.debug('Calling algo pre_act')
             self.algo.pre_act()
             # act
-            logger.debug('Calling algo act')
+            ldebug and logger.debug('Calling algo act')
             self.action, self.action_info = self.algo.act()
-            logger.debug(
+            ldebug and logger.debug(
                 f'action #{self.num_episode_steps}: {self.action}. info: {self.action_info}')
             if self.action is None:
                 raise RuntimeError(
                     "The algorithm returned no action. The env cannot be stepped")
             # step
             self.prev_obs = self.obs
-            logger.debug('Stepping env')
+            ldebug and logger.debug('Stepping env')
             self.obs, self.reward, self.done, self.info = self.env.step(
                 self.action)
             self.info.update(self.action_info)
             self.obs = np.asarray(self.obs)
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(
+            if ldebug:
+                ldebug and logger.debug(
                     f'reward={self.reward}, done={self.done}, info={self.info}')
-            logger.debug(
+            ldebug and logger.debug(
                 "Incrementing rewards, costs, num_steps, num_episode_steps")
             self.sum_of_rewards += self.reward
             self.cost = self.info.get('cost', 0)
@@ -118,7 +119,7 @@ class Manager:
             self.num_episode_steps += 1
             self.num_steps += 1
             # post act
-            logger.debug('Calling algo post_act')
+            ldebug and logger.debug('Calling algo post_act')
             self.algo.post_act()
             # post episode for envs which are done:
             need_reset = self.done

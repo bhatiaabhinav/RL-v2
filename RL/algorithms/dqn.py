@@ -33,12 +33,14 @@ class DQN(StandardEnvWrapAlgo):
         if args.eval_mode:
             model_loader = self.register_agent(ModelLoadAgent('ModelLoader', self, None, os.path.join(
                 args.rl_logdir, args.env_id, args.eval_run, 'checkpoints'), in_sequence=args.eval_in_sequence, wait_for_new=True))
+        exp_buff_agent = None
         if not args.eval_mode:
             exp_buff_agent = self.register_agent(ExperienceBufferAgent(
                 "ExpBuffAgent", self, args.nsteps, args.gamma, args.cost_gamma, args.exp_buff_len, None, not args.no_ignore_done_on_timelimit))
 
         dqn_core_agent = self.register_agent(DQNCoreAgent('DQNCoreAgent', self, list(filter(lambda x: x != [0], [args.conv1, args.conv2, args.conv3])), args.hiddens, args.train_freq, args.sgd_steps, args.mb_size, args.double_dqn, args.dueling_dqn,
                                                           args.gamma, args.nsteps, args.td_clip, args.grad_clip, args.lr, args.ep, args.noisy_explore, args.eval_mode, args.min_explore_steps, None if args.eval_mode else exp_buff_agent.experience_buffer, args.dqn_ptemp))  # type: DQNCoreAgent
+        model_loader = None
         if args.eval_mode:
             model_loader.model = dqn_core_agent.q
 

@@ -1,16 +1,11 @@
-import logging
 import os
-from multiprocessing import Condition
 from time import sleep
-from typing import Callable
 
 import torch
 from six import MAXSIZE
 from torch import nn
-from torch._C import set_flush_denormal
 
 import RL
-from RL.agents.periodic_agent import PeriodicAgent
 
 
 class ModelLoadAgent(RL.Agent):

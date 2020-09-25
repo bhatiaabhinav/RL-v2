@@ -13,6 +13,7 @@ from RL.utils.standard_models import FFModel
 from RL.utils.util_fns import toNpFloat32
 
 logger = logging.getLogger(__name__)
+ldebug = logger.isEnabledFor(logging.DEBUG)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
@@ -102,7 +103,7 @@ class DQNCoreAgent(RL.Agent):
                           convs, hidden_layers, self.env.action_space.n, dueling=dueling_dqn, noisy=noisy_explore)
         self.q.to(device)
         logger.info(str(self.q))
-        if logger.isEnabledFor(logging.DEBUG):
+        if ldebug:
             wandb.watch([self.q], log='all', log_freq=1000 // train_freq)
         if not eval_mode:
             logger.info(f'Creating target network on device {device}')
@@ -150,7 +151,7 @@ class DQNCoreAgent(RL.Agent):
     def act(self):
         if self.manager.episode_type > 0:
             # print('Exploit action')
-            logger.debug('Exploit action')
+            ldebug and logger.debug('Exploit action')
             # if not self.eval_mode:
             with torch.no_grad():
                 obs = torch.from_numpy(toNpFloat32(
@@ -167,12 +168,12 @@ class DQNCoreAgent(RL.Agent):
             #     greedy_a = self.action(q, alpha=0).cpu().detach().numpy()[0]
             return greedy_a, {}
         else:
-            logger.debug('Behavior Policy')
+            ldebug and logger.debug('Behavior Policy')
             if np.random.rand() < self.epsilon:
-                logger.debug('Random action')
+                ldebug and logger.debug('Random action')
                 return self.env.action_space.sample(), {}
             else:
-                logger.debug('greedy action')
+                ldebug and logger.debug('greedy action')
                 with torch.no_grad():
                     obs = torch.from_numpy(toNpFloat32(
                         self.manager.obs, True)).to(device)
@@ -181,7 +182,7 @@ class DQNCoreAgent(RL.Agent):
                 return a, {}
 
     def sgd_update(self):
-        logger.debug('Training')
+        ldebug and logger.debug('Training')
         with torch.no_grad():
             states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
                 self.mb_size)
@@ -213,7 +214,7 @@ class DQNCoreAgent(RL.Agent):
         all_states_idx = np.arange(self.mb_size)
         td_errors = desired_q - q_detached[all_states_idx, actions]
         if self.td_clip is not None:
-            logger.debug('Doing TD error clipping')
+            ldebug and logger.debug('Doing TD error clipping')
             td_errors = np.clip(td_errors, -self.td_clip, self.td_clip)
             # print(td_errors)
         q_detached[all_states_idx, actions] = q_detached[all_states_idx, actions] + \
@@ -224,7 +225,7 @@ class DQNCoreAgent(RL.Agent):
         loss = F.smooth_l1_loss(q, torch.from_numpy(desired_q).to(device))
         loss.backward()
         if self.grad_clip is not None:
-            logger.debug('Doing grad clipping')
+            ldebug and logger.debug('Doing grad clipping')
             torch.nn.utils.clip_grad_norm_(
                 self.q.parameters(), self.grad_clip)
 
