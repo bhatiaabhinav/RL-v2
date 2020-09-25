@@ -116,12 +116,19 @@ class FrameSkipWrapper(gym.Wrapper):
 
     def step(self, action):
         r_total = 0
+        obs = None
+        d = False
+        last_info = {}
         for count in range(self.skip):
             obs, r, d, info = self.env.step(action)
             r_total += r
+            for key in info.keys():
+                if 'reward' in key.lower():
+                    info[key] = info[key] + last_info.get(key, 0)
+                last_info = info
             if d:
                 break
-        return obs, r_total, d, info
+        return obs, r_total, d, last_info
 
 
 class CostInfoWrapper(gym.Wrapper):
