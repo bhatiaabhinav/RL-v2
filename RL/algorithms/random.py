@@ -40,16 +40,16 @@ class Random(StandardEnvWrapAlgo):
             'Steps': self.manager.num_steps,
             'Episodes': self.manager.num_episodes,
             'Len': self.manager.num_episode_steps,
-            'R': wandb.run.history.row['Episode/Reward'],
-            'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
-            'C': wandb.run.history.row['Episode/Cost']
+            'R': wandb.run.history._data['Episode/Reward'],
+            'R(100)': wandb.run.history._data['Average/RPE (Last 100)'],
+            'C': wandb.run.history._data['Episode/Cost']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,
-            'Average RPE': wandb.run.history.row['Average/RPE'],
-            'Average CPE': wandb.run.history.row['Average/CPE'],
-            'Average RPS': wandb.run.history.row['Average/RPS'],
-            'Average CPS': wandb.run.history.row['Average/CPS']
+            'Average RPE': wandb.run.history._data['Average/RPE'],
+            'Average CPE': wandb.run.history._data['Average/CPE'],
+            'Average RPS': wandb.run.history._data['Average/RPS'],
+            'Average CPS': wandb.run.history._data['Average/CPS']
         }))
 
         if not args.no_render:

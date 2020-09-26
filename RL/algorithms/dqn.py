@@ -61,17 +61,17 @@ class DQN(StandardEnvWrapAlgo):
             'Steps': self.manager.num_steps,
             'Episodes': self.manager.num_episodes,
             'Len': self.manager.num_episode_steps,
-            'R': wandb.run.history.row['Episode/Reward'],
-            'R(100)': wandb.run.history.row['Average/RPE (Last 100)'],
-            'loss': wandb.run.history.row['DQN/Loss'],
-            'mb_V': wandb.run.history.row['DQN/Value'],
-            'ep': wandb.run.history.row['DQN/Epsilon'],
-            'mb_QStd': wandb.run.history.row['DQN/Q_Std']
+            'R': wandb.run.history._data['Episode/Reward'],
+            'R(100)': wandb.run.history._data['Average/RPE (Last 100)'],
+            'loss': wandb.run.history._data['DQN/Loss'],
+            'mb_V': wandb.run.history._data['DQN/Value'],
+            'ep': wandb.run.history._data['DQN/Epsilon'],
+            'mb_QStd': wandb.run.history._data['DQN/Q_Std']
         }, lambda: {
             'Total Steps': self.manager.num_steps,
             'Total Episodes': self.manager.num_episodes,
-            'Average RPE': wandb.run.history.row['Average/RPE'],
-            'Average CPE': wandb.run.history.row['Average/CPE']
+            'Average RPE': wandb.run.history._data['Average/RPE'],
+            'Average CPE': wandb.run.history._data['Average/CPE']
         }))
 
         if not args.no_render:
