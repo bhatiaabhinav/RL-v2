@@ -113,15 +113,30 @@ Note: DDPG and SAC algorithms soft-copy Q net params to target net
 - `--model_save_freq` (default=1000000). The model is saved every these many steps to checkpoints directory
 
 ### Wrappers
-- General:
+- For non-atari image-based or non image-based environments:
     - Framestack e.g. `--framestack=4` (default=1)
     - Frameskip e.g. `--frameskip=4` (default=1)
     - Artifical timelimit e.g. `--artificial_timelimit=500` (default None). It uses built-in gym's Timelimit wrapper to force termination of episodes at these many steps.
-- Atari Specific
+- Atari Specific:
     - Framestack e.g. `--atari_framestack=4` (default=4)
     - Frameskip e.g. `--atari_frameskip=4` (default=4)
     - Max num of noops in beginnning of episode e.g. `--atari_noop_max=30` (default=30).
     - reward clipping flag. `--atari_clip_rewards`.
+
+Framestack is always applied on top of frameskip. e.g. if frameskip is 4 and framestack is 3, then frames 0,4,8 are stacked together to form the first _step's_ observation. Then frame 4,8,12 are stacked together to form the second _step's_ observation. and so on.
+
+
+#### **Notes for Atari**:
+For Atari, use only environments:
+- ending in `NoFrameskip-v4`. e.g. `BreakoutNoFrameskip-v4` or `PongNoFrameskip-v4` etc. to play from pixels.
+- or ending in `-ramNoFrameskip-v4` e.g. `Breakout-ramNoFrameskip-v4' to play from RAM state.
+
+Any other environment will be treated as non-atari environments.
+
+Another note: `--atari_framestack` is ignored for RAM based atari environments. To force frame stacking, use the general `--framestack` argument.
+
+
+
 
 ---
 
