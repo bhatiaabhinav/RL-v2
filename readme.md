@@ -90,8 +90,8 @@ Note: DDPG and SAC algorithms soft-copy Q net params to target net
 
 - Network: Upto 3 convolutional layer can be specified, followed by any number of hidden layers. All conv layers are automatically ignored when the input is not an image.
     - `--conv1` (default= 32 8 4 0). Parameters of the first convolution layer. Specify like this: `--conv1 channels kernel_size stride padding`. Specify `--conv1 0` to skip this layer.
-    - `--conv2` (default= 64 4 2 0). Specify `--conv2 0` to skip this layer.
-    - `--conv3` (default= 64 3 1 0). Specify `--conv3 0` to skip this layer.
+    - `--conv2` (default= 64 4 2 0). Specification format same as conv1. Specify `--conv2 0` to skip this layer.
+    - `--conv3` (default= 64 3 1 0). Specification format same as conv1. Specify `--conv3 0` to skip this layer.
     - `--hiddens` (default= 512). Hidden layers specify like: `--hiddens h1 h2 h3`. E.g. `--hiddens 512 256 64 32` to create 4 hidden layers with respective number of nodes. To specify no hidden layers, pass `--hiddens ` i.e. the argument name followed by only a whitespace.
 - `--gamma` (default=0.99). Discount factor for training.
 - `--exp_buff_len` (default=1M). Experience buffer length.
@@ -113,7 +113,7 @@ Note: DDPG and SAC algorithms soft-copy Q net params to target net
 - `--model_save_freq` (default=1000000). The model is saved every these many steps to checkpoints directory
 
 ### Wrappers
-- For non-atari image-based or non image-based environments:
+- For non-atari environments (both image-based or non image-based):
     - Framestack e.g. `--framestack=4` (default=1)
     - Frameskip e.g. `--frameskip=4` (default=1)
     - Artifical timelimit e.g. `--artificial_timelimit=500` (default None). It uses built-in gym's Timelimit wrapper to force termination of episodes at these many steps.
