@@ -49,6 +49,7 @@ class FFModel(nn.Module):
                 f"Conv layers were requested but the input shape {input_shape} does not support convs")
             total_layers -= len(convs)
 
+        num_features = None
         if flatten or self.num_layers < total_layers:
             num_features = shape[0] if len(
                 shape) == 1 else shape[0] * shape[1] * shape[2]
@@ -94,7 +95,7 @@ class FFModel(nn.Module):
 
     def forward(self, x: torch.Tensor):
         '''should be a float tensor'''
-        assert 2 <= len(x.shape) <= 4
+        assert 2 <= len(x.shape) <= 4, f"shape of x is {x.shape}"
         if len(x.shape) == 3:
             x = x.unsqueeze(1)
         for conv_layer in self.conv_layers:
