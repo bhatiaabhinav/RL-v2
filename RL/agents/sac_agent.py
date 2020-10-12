@@ -164,7 +164,7 @@ class SACAgent(RL.Agent):
                     return a, {}
 
     def post_act(self):
-        if self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
+        if self.manager.num_steps > self.no_train_for_steps and (self.manager.num_steps - 1) % self.train_freq == 0:
             ldebug and logger.debug('Training')
             with torch.no_grad():
                 states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
@@ -216,13 +216,13 @@ class SACAgent(RL.Agent):
             self._mb_v = mean_v.item()
             self._mb_ent = entropy.item()
 
-        if self.manager.step_id % 1000 == 0:
+        if (self.manager.num_steps - 1) % 1000 == 0:
             wandb.log({
                 'SAC/Loss': self._loss,
                 'SAC/Value': self._mb_v,
                 'SAC/Entropy': self._mb_ent,
                 'SAC/Alpha': self.alpha.item()
-            }, step=self.manager.step_id)
+            }, step=self.manager.num_steps - 1)
 
     def post_episode(self):
         wandb.log({
@@ -230,4 +230,4 @@ class SACAgent(RL.Agent):
             'SAC/Value': self._mb_v,
             'SAC/Entropy': self._mb_ent,
             'SAC/Alpha': self.alpha.item()
-        }, step=self.manager.step_id)
+        }, step=self.manager.num_steps - 1)

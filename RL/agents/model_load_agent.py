@@ -92,23 +92,23 @@ class ModelLoadAgent(RL.Agent):
                     break
 
     def pre_episode(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id
+        self.manager.num_episodes = self.model_episode_id
 
     def pre_act(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id
+        self.manager.num_episodes = self.model_episode_id
 
     def post_act(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id + 1
+        self.manager.num_episodes = self.model_episode_id
 
     def post_episode(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id + 1
+        self.manager.num_episodes = self.model_episode_id + 1
 
         self.update_model()
 
     def pre_close(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id + 1
+        self.manager.num_episodes = self.model_episode_id + 1

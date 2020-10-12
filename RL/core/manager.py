@@ -25,11 +25,8 @@ class Manager:
         self.num_episodes_to_run = num_episodes_to_run
         self.logdir = logdir
         self.num_steps = 0
-        self.step_id = 0
         self.num_episode_steps = 0
-        self.episode_step_id = 0
         self.num_episodes = 0
-        self.episode_id = 0
         self.episode_type = 0  # 0 means explore, 1 means exploit, 2 means eval
         self.prev_obs = None
         self.action = None
@@ -78,7 +75,6 @@ class Manager:
                 self.sum_of_costs = 0
                 self.done = False
                 self.info = {}
-                self.episode_step_id = 0
                 self.num_episode_steps = 0
                 # pre episode
                 logger.info('Calling algo pre_episode')
@@ -131,11 +127,7 @@ class Manager:
                 self.num_episodes += 1
                 logger.info('Calling algo post_episode')
                 self.algo.post_episode()
-                self.episode_id += 1
-            self.episode_step_id += 1
-            self.step_id += 1
-        self.episode_step_id -= 1  # reverting the extra increment in the final iteration
-        self.step_id -= 1  # reverting the extra increment in final iteration
+
         logger.info(
             f'------------------ stopping run at num_steps={self.num_steps} and num_episodes={self.num_episodes} ------------------')
         logger.info('Calling algo pre_close')

@@ -50,8 +50,8 @@ class DQN(StandardEnvWrapAlgo):
 
             self.register_agent(ModelCopyAgent('TargetNetCopier', self, dqn_core_agent.q,
                                                dqn_core_agent.target_q, args.target_q_freq, args.target_q_polyak, args.min_explore_steps))
-            self.register_agent(PeriodicAgent('ModelSaver', self, lambda step, ep: (torch.save(
-                dqn_core_agent.q.state_dict(), os.path.join(self.manager.logdir, 'checkpoints', f'step-{step}-ep+{ep}.model')), torch.save(
+            self.register_agent(PeriodicAgent('ModelSaver', self, lambda step_id, ep_id: (torch.save(
+                dqn_core_agent.q.state_dict(), os.path.join(self.manager.logdir, 'checkpoints', f'step-{step_id}-ep+{ep_id}.model')), torch.save(
                 dqn_core_agent.q.state_dict(), os.path.join(self.manager.logdir, 'checkpoints', f'latest.model'))), step_freq=args.model_save_freq))
 
         self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,

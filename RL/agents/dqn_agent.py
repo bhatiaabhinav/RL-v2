@@ -237,17 +237,17 @@ class DQNCoreAgent(RL.Agent):
         ).item(), torch.mean(v).item(), torch.mean(q_std).item()
 
     def post_act(self):
-        if self.manager.episode_type < 2 and self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
+        if self.manager.episode_type < 2 and self.manager.num_steps > self.no_train_for_steps and (self.manager.num_steps - 1) % self.train_freq == 0:
             for sgd_step in range(self.sgd_steps):
                 self.sgd_update()
 
-        if self.manager.step_id % 1000 == 0:
+        if (self.manager.num_steps - 1) % 1000 == 0:
             wandb.log({
                 'DQN/Loss': self._loss,
                 'DQN/Value': self._mb_v,
                 'DQN/Q_Std': self._mb_q_std,
                 'DQN/Epsilon': self.epsilon
-            }, step=self.manager.step_id)
+            }, step=self.manager.num_steps - 1)
 
     def post_episode(self):
         wandb.log({
@@ -255,4 +255,4 @@ class DQNCoreAgent(RL.Agent):
             'DQN/Value': self._mb_v,
             'DQN/Q_Std': self._mb_q_std,
             'DQN/Epsilon': self.epsilon
-        }, step=self.manager.step_id)
+        }, step=self.manager.num_steps - 1)
