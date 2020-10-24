@@ -154,8 +154,13 @@ class DQNCoreAgent(RL.Agent):
             ldebug and logger.debug('Exploit action')
             # if not self.eval_mode:
             with torch.no_grad():
+                print()
                 obs = torch.from_numpy(toNpFloat32(
                     self.manager.obs, True)).to(device)
+                last_16 = obs[0][-16:]
+                print(last_16)
+                print(self.q.q.linear_layers[0].weight.data[0][-16:] /
+                      torch.max(torch.abs(self.q.q.linear_layers[0].weight.data[0][-16:])))
                 greedy_a = self.action(
                     self.q(obs, noisy=False)[0], alpha=0).cpu().detach().numpy()[0]
             # if self.eval_mode:
