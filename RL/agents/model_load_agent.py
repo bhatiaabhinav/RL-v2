@@ -1,16 +1,11 @@
-import logging
 import os
-from multiprocessing import Condition
 from time import sleep
-from typing import Callable
 
 import torch
 from six import MAXSIZE
 from torch import nn
-from torch._C import set_flush_denormal
 
 import RL
-from RL.agents.periodic_agent import PeriodicAgent
 
 
 class ModelLoadAgent(RL.Agent):
@@ -97,23 +92,23 @@ class ModelLoadAgent(RL.Agent):
                     break
 
     def pre_episode(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id
+        self.manager.num_episodes = self.model_episode_id
 
     def pre_act(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id
+        self.manager.num_episodes = self.model_episode_id
 
     def post_act(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id + 1
+        self.manager.num_episodes = self.model_episode_id
 
     def post_episode(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id + 1
+        self.manager.num_episodes = self.model_episode_id + 1
 
         self.update_model()
 
     def pre_close(self):
-        self.manager.step_id = self.model_step_id
-        self.manager.episode_id = self.model_episode_id
+        self.manager.num_steps = self.model_step_id + 1
+        self.manager.num_episodes = self.model_episode_id + 1

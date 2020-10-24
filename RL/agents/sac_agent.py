@@ -13,6 +13,7 @@ from RL.utils.standard_models import FFModel
 from RL.utils.util_fns import toNpFloat32
 
 logger = logging.getLogger(__name__)
+ldebug = logger.isEnabledFor(logging.DEBUG)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
@@ -37,6 +38,7 @@ class Actor(nn.Module):
     def forward(self, s, deterministic=False, return_logpi=False, rsample=False):
         s = self.conv_model(s)
         mu = self.mu_model(s)
+        policy = None
         if not deterministic or return_logpi:
             logstd = torch.clamp(self.logstd_model(s), -20, 2)
             policy = Normal(mu, torch.exp(logstd))
@@ -116,7 +118,7 @@ class SACAgent(RL.Agent):
         self.q2 = Critic(
             obs_space.shape, ac_space.shape[0], convs, hidden_layers).to(device)
         logger.info(str(self.q1))
-        if logger.isEnabledFor(logging.DEBUG):
+        if ldebug:
             wandb.watch([self.a, self.q1], log='all',
                         log_freq=1000 // train_freq)
 
@@ -143,7 +145,7 @@ class SACAgent(RL.Agent):
 
     def act(self):
         if self.manager.episode_type > 0:
-            logger.debug('Exploit Action')
+            ldebug and logger.debug('Exploit Action')
             with torch.no_grad():
                 obs = torch.from_numpy(toNpFloat32(
                     self.manager.obs, True)).to(device)
@@ -151,10 +153,10 @@ class SACAgent(RL.Agent):
                 return a, {}
         else:
             if self.manager.num_steps < self.no_train_for_steps:
-                logger.debug('Random Action')
+                ldebug and logger.debug('Random Action')
                 return self.env.action_space.sample(), {}
             else:
-                logger.debug('Stochastic Action')
+                ldebug and logger.debug('Stochastic Action')
                 with torch.no_grad():
                     obs = torch.from_numpy(toNpFloat32(
                         self.manager.obs, True)).to(device)
@@ -162,8 +164,8 @@ class SACAgent(RL.Agent):
                     return a, {}
 
     def post_act(self):
-        if self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
-            logger.debug('Training')
+        if self.manager.num_steps > self.no_train_for_steps and (self.manager.num_steps - 1) % self.train_freq == 0:
+            ldebug and logger.debug('Training')
             with torch.no_grad():
                 states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
                     self.mb_size)
@@ -214,13 +216,13 @@ class SACAgent(RL.Agent):
             self._mb_v = mean_v.item()
             self._mb_ent = entropy.item()
 
-        if self.manager.step_id % 1000 == 0:
+        if (self.manager.num_steps - 1) % 1000 == 0:
             wandb.log({
                 'SAC/Loss': self._loss,
                 'SAC/Value': self._mb_v,
                 'SAC/Entropy': self._mb_ent,
                 'SAC/Alpha': self.alpha.item()
-            }, step=self.manager.step_id)
+            }, step=self.manager.num_steps - 1)
 
     def post_episode(self):
         wandb.log({
@@ -228,4 +230,4 @@ class SACAgent(RL.Agent):
             'SAC/Value': self._mb_v,
             'SAC/Entropy': self._mb_ent,
             'SAC/Alpha': self.alpha.item()
-        }, step=self.manager.step_id)
+        }, step=self.manager.num_steps - 1)

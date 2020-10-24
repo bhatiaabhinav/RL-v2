@@ -73,10 +73,10 @@ class StatsRecordingAgent(RL.Agent):
         self._rr10000 = self.new_moving_mean(self._rr10000, r, self._rewards)
         self._cr10000 = self.new_moving_mean(self._cr10000, c, self._costs)
 
-        if self.manager.step_id % 1000 == 0:
-            if self.manager.step_id > self.last_recorded_for_step_id:
+        if (self.manager.num_steps - 1) % 1000 == 0:
+            if self.manager.num_steps - 1 > self.last_recorded_for_step_id:
                 self.record_summary_stats()
-                self.last_recorded_for_step_id = self.manager.step_id
+                self.last_recorded_for_step_id = self.manager.num_steps - 1
 
     def post_episode(self):
         self._rpe = self.new_mean(
@@ -90,14 +90,14 @@ class StatsRecordingAgent(RL.Agent):
 
         self.record_episode_stats()
         self.record_summary_stats()
-        self.last_recorded_for_step_id = self.manager.step_id
+        self.last_recorded_for_step_id = self.manager.num_steps - 1
 
     def pre_close(self):
         self.record_summary_stats()
 
     def record_episode_stats(self):
         wandb.log({
-            'Episode/ID': self.manager.episode_id,
+            'Episode/ID': self.manager.num_episodes - 1,
             'Episode/Type': self.manager.episode_type,
             'Episode/Steps': self.manager.num_episode_steps,
             'Episode/EndTimestamp': time.time() - self._start_time,
@@ -105,7 +105,7 @@ class StatsRecordingAgent(RL.Agent):
             'Episode/Reward': self._episode_return,
             'Episode/Cost': self._episode_cost_return,
             'Episode/Info': self.manager.info
-        }, step=self.manager.step_id)
+        }, step=self.manager.num_steps - 1)
 
     def record_summary_stats(self):
         wandb.log({
@@ -122,4 +122,4 @@ class StatsRecordingAgent(RL.Agent):
             'Average/CPS': self._cr,
             'Average/RPS (Last 100k)': self._rr10000,
             'Average/CPS (Last 100k)': self._cr10000
-        }, step=self.manager.step_id)
+        }, step=self.manager.num_steps - 1)

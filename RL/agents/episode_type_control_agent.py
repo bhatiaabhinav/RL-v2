@@ -30,9 +30,9 @@ class EpisodeTypeControlAgent(RL.Agent):
             else:
                 if self.exploit_freq is not None:
                     self.manager.episode_type = int(
-                        self.manager.episode_id % self.exploit_freq == 0)
+                        self.manager.num_episodes % self.exploit_freq == 0)
                     logger.info(
-                        f"episode_type={self.manager.episode_type} based on episode_id({self.manager.episode_id}) and exploit_freq({self.exploit_freq}). No eval mode. min_explore_steps is None or expired.")
+                        f"episode_type={self.manager.episode_type} based on episode_id({self.manager.num_episodes}) and exploit_freq({self.exploit_freq}). No eval mode. min_explore_steps is None or expired.")
                 else:
                     self.manager.episode_type = 0
                     logger.info(

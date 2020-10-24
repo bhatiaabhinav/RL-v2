@@ -8,6 +8,7 @@ import RL
 
 ids = 0
 logger = logging.getLogger(__name__)
+ldebug = logger.isEnabledFor(logging.DEBUG)
 
 
 class Experience:
@@ -80,37 +81,37 @@ class ExperienceBuffer:
             rollouts.append(rollout)
         return np.array(rollouts)
 
-    def random_rollouts_unzipped(self, count, rollout_size, dones_as_ints=True, return_costs=False):
-        starting_indices = np.random.randint(
-            0, self.count - rollout_size, size=count)
-        states, actions, rewards, dones, infos, next_states = [], [], [], [], [], []
-        if return_costs:
-            costs = []
-        for i in starting_indices:
-            rollout = self.buffer[i:i + rollout_size]
-            states.append([exp.state for exp in rollout])
-            actions.append([exp.action for exp in rollout])
-            rewards.append([exp.reward for exp in rollout])
-            dones.append(
-                [int(exp.done) if dones_as_ints else exp.done for exp in rollout])
-            infos.append([exp.info for exp in rollout])
-            next_states.append([exp.next_state for exp in rollout])
-            if return_costs:
-                costs.append([exp.cost for exp in rollout])
-        states, actions, rewards, dones, infos, next_states = np.asarray(states), np.asarray(
-            actions), np.asarray(rewards), np.asarray(dones), np.asarray(infos), np.asarray(next_states)
-        if return_costs:
-            costs = np.asarray(costs)
-        if return_costs:
-            return_items = (states, actions, rewards, costs,
-                            dones, infos, next_states)
-        else:
-            return_items = (states, actions, rewards,
-                            dones, infos, next_states)
-        for item in return_items:
-            assert list(item.shape[0:2]) == [count, rollout_size], "item: {0}, shape: {1}, expected: {2}".format(
-                item, list(item.shape), [count, rollout_size])
-        return return_items
+    # def random_rollouts_unzipped(self, count, rollout_size, dones_as_ints=True, return_costs=False):
+    #     starting_indices = np.random.randint(
+    #         0, self.count - rollout_size, size=count)
+    #     states, actions, rewards, dones, infos, next_states = [], [], [], [], [], []
+    #     if return_costs:
+    #         costs = []
+    #     for i in starting_indices:
+    #         rollout = self.buffer[i:i + rollout_size]
+    #         states.append([exp.state for exp in rollout])
+    #         actions.append([exp.action for exp in rollout])
+    #         rewards.append([exp.reward for exp in rollout])
+    #         dones.append(
+    #             [int(exp.done) if dones_as_ints else exp.done for exp in rollout])
+    #         infos.append([exp.info for exp in rollout])
+    #         next_states.append([exp.next_state for exp in rollout])
+    #         if return_costs:
+    #             costs.append([exp.cost for exp in rollout])
+    #     states, actions, rewards, dones, infos, next_states = np.asarray(states), np.asarray(
+    #         actions), np.asarray(rewards), np.asarray(dones), np.asarray(infos), np.asarray(next_states)
+    #     if return_costs:
+    #         costs = np.asarray(costs)
+    #     if return_costs:
+    #         return_items = (states, actions, rewards, costs,
+    #                         dones, infos, next_states)
+    #     else:
+    #         return_items = (states, actions, rewards,
+    #                         dones, infos, next_states)
+    #     for item in return_items:
+    #         assert list(item.shape[0:2]) == [count, rollout_size], "item: {0}, shape: {1}, expected: {2}".format(
+    #             item, list(item.shape), [count, rollout_size])
+    #     return return_items
 
     def random_states(self, count):
         experiences = list(self.random_experiences(count))
@@ -169,7 +170,7 @@ class ExperienceBufferAgent(RL.Agent):
             elif self.manager.num_episode_steps == self.env.spec.max_episode_steps:
                 done = False
             if not done:
-                logger.debug(
+                ldebug and logger.debug(
                     'Done happened due to timelimit so recorded as false')
         return done
 
@@ -177,5 +178,5 @@ class ExperienceBufferAgent(RL.Agent):
         exp = Experience(self.manager.prev_obs, self.manager.action, self.manager.reward,
                          self.get_done(), self.manager.info, self.manager.obs, cost=self.manager.cost)
         self.add_to_experience_buffer(exp)
-        logger.debug(
+        ldebug and logger.debug(
             f'{self.name}: Added an exp to replay buff. Count={self.experience_buffer.count}')

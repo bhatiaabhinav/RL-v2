@@ -113,7 +113,7 @@ class MaxAndSkipEnv(gym.Wrapper):
                 break
         max_frame = np.max(np.stack(self._obs_buffer), axis=0)
 
-        return max_frame, total_reward, done, info
+        return max_frame, total_reward, done, last_info
 
     def reset(self):
         """Clear past frame buffer and init. to first obs. from inner env."""
@@ -154,6 +154,7 @@ class SkipEnv(gym.Wrapper):
         total_reward = 0.0
         last_info = {}
         done = None
+        obs = None
         for _ in range(self._skip):
             obs, reward, done, info = self.env.step(action)
             total_reward += reward
@@ -164,7 +165,7 @@ class SkipEnv(gym.Wrapper):
             if done:
                 break
 
-        return obs, total_reward, done, info
+        return obs, total_reward, done, last_info
 
 
 class ClipRewardEnv(gym.RewardWrapper):
@@ -256,7 +257,7 @@ class SkipAndFrameStack(gym.Wrapper):
             self.frames.append(ob)
             if done:
                 break
-        return self._observation(), total_reward, done, info
+        return self._observation(), total_reward, done, last_info
 
     def _observation(self):
         assert len(self.frames) == self.k
@@ -309,6 +310,8 @@ class NoopFrameskipWrapper(gym.Wrapper):
         if self._is_noop(action):
             R = 0
             last_info = {}
+            ob = None
+            d = False
             for i in range(self.FRAMESKIP_ON_NOOP):
                 ob, r, d, info = super().step(action)
                 R += r
@@ -318,7 +321,7 @@ class NoopFrameskipWrapper(gym.Wrapper):
                     last_info = info
                 if d:
                     break
-            return ob, R, d, info
+            return ob, R, d, last_info
         else:
             return super().step(action)
 
