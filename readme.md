@@ -7,10 +7,12 @@ System requirements: >=python3.6
 For Linux/osx:
 
 ```bash
+sudo apt install -y libglu1-mesa-dev libgl1-mesa-dev libosmesa6-dev xvfb ffmpeg curl patchelf libglfw3 libglfw3-dev cmake zlib1g zlib1g-dev swig
 git clone https://github.com/bhatiaabhinav/RL-v2.git
 cd RL-v2
 python3 -m venv env
 source env/bin/activate
+pip install --upgrade pip
 pip install wheel
 pip install -r requirements_ubuntu.txt
 pip install -e .
@@ -19,9 +21,11 @@ mkdir logs
 or set env variable RL_LOGDIR to specify logs directory.
 
 For Windows:
+(Many of the things below can be more conviniently installed using Chocolatey package manager for Windows)
 - Install git (with Unix tools).
 - Install VisualStudio Community Edition 2019 with MS Build Tools 2015, 2017, 2019.
 - Install swig.
+- Install ffmpeg.
 - Install cuda and corresponding version of pytorch (after activating virtual env). https://pytorch.org/.
 
 Then:
@@ -31,6 +35,7 @@ git clone https://github.com/bhatiaabhinav/RL-v2.git
 cd RL-v2
 python3 -m venv env
 ./env/Scripts/activate
+pip install --upgrade pip
 pip install wheel
 pip install -r requirements_windows.txt
 pip install -e .

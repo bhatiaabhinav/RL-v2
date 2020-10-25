@@ -30,7 +30,7 @@ gym==0.17.2
 h5py==2.10.0
 idna==2.10
 importlib-metadata==1.5.0
-isort==5.5.2
+isort==5.6.4
 Keras-Applications==1.0.8
 Keras-Preprocessing==1.1.0
 kiwisolver==1.1.0
@@ -60,9 +60,8 @@ pybullet==2.7.8
 pycodestyle==2.5.0
 pydot==1.4.1
 pyflakes==2.1.1
-pygame==1.9.6
 pyglet==1.5.0
-pylint==2.4.4
+pylint==2.6.0
 pyparsing==2.4.6
 pytest==5.4.1
 python-dateutil==2.8.1

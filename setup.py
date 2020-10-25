@@ -33,7 +33,6 @@ setup(
         'scipy>=1.4.1',
         'torch>=1.4.0',
         'wandb>=0.8.36',
-        'pybullet>=2.7.8',
-        'pygame>=1.9.6'
+        'pybullet>=2.7.8'
     ]
 )
