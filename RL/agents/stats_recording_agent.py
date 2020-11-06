@@ -101,7 +101,7 @@ class StatsRecordingAgent(RL.Agent):
             'Episode/Type': self.manager.episode_type,
             'Episode/Steps': self.manager.num_episode_steps,
             'Episode/EndTimestamp': time.time() - self._start_time,
-            'Episode/SPS': self.manager.num_episode_steps / (time.time() - self._episode_start_time),
+            'Episode/SPS': self.manager.num_episode_steps / (1e-6 + time.time() - self._episode_start_time),
             'Episode/Reward': self._episode_return,
             'Episode/Cost': self._episode_cost_return,
             'Episode/Info': self.manager.info
