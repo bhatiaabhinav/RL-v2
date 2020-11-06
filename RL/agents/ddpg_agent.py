@@ -135,7 +135,7 @@ class DDPGAgent(RL.Agent):
                     return a, {}
 
     def post_act(self):
-        if self.manager.num_steps > self.no_train_for_steps and self.manager.step_id % self.train_freq == 0:
+        if self.manager.num_steps > self.no_train_for_steps and (self.manager.num_steps - 1) % self.train_freq == 0:
             ldebug and logger.debug('Training')
             with torch.no_grad():
                 states, actions, rewards, dones, info, next_states = self.exp_buffer.random_experiences_unzipped(
@@ -175,13 +175,13 @@ class DDPGAgent(RL.Agent):
             self._loss = critics_loss.cpu().detach().item()
             self._mb_v = mean_v.cpu().detach().item()
 
-        if self.manager.step_id % 1000 == 0:
+        if (self.manager.num_steps - 1) % 1000 == 0:
             wandb.log({
                 'DDPG/Loss': self._loss,
                 'DDPG/Value': self._mb_v,
                 'DDPG/Noise': self._noise,
                 'DDPG/Sigma': self.a.sigma
-            }, step=self.manager.step_id)
+            }, step=self.manager.num_steps - 1)
 
     def post_episode(self):
         if self.manager.num_steps > self.no_train_for_steps:
@@ -196,4 +196,4 @@ class DDPGAgent(RL.Agent):
             'DDPG/Value': self._mb_v,
             'DDPG/Noise': self._noise,
             'DDPG/Sigma': self.a.sigma
-        }, step=self.manager.step_id)
+        }, step=self.manager.num_steps - 1)

@@ -20,16 +20,16 @@ class PeriodicAgent(RL.Agent):
 
     def post_act(self):
         if self.step_freq is not None and self.manager.num_steps >= self.min_steps and (self.manager.num_steps - 1) % self.step_freq == 0:
-            self.fn(self.manager.step_id, self.manager.episode_id)
+            self.fn(self.manager.num_steps - 1, self.manager.num_episodes)
 
     def post_episode(self):
         if self.episode_freq is not None and self.manager.num_episodes > self.no_copy_for_episodes and (self.manager.num_episodes - 1) % self.episode_freq == 0:
-            self.fn(self.manager.step_id, self.manager.episode_id)
+            self.fn(self.manager.num_steps - 1, self.manager.num_episodes - 1)
 
     def pre_close(self):
         if self.call_at_pre_close:
-            self.fn(self.manager.step_id, self.manager.episode_id)
+            self.fn(self.manager.num_steps - 1, self.manager.num_episodes - 1)
 
     def post_close(self):
         if self.call_at_post_close:
-            self.fn(self.manager.step_id, self.manager.episode_id)
+            self.fn(self.manager.num_steps - 1, self.manager.num_episodes - 1)

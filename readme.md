@@ -2,30 +2,59 @@
 
 ## Installation
 
-System requirements: python3.6
+System requirements: >=python3.6
 
-For linux/osx:
+For Linux/osx:
 
 ```bash
+sudo apt install -y libglu1-mesa-dev libgl1-mesa-dev libosmesa6-dev xvfb ffmpeg curl patchelf libglfw3 libglfw3-dev cmake zlib1g zlib1g-dev swig
 git clone https://github.com/bhatiaabhinav/RL-v2.git
 cd RL-v2
 python3 -m venv env
 source env/bin/activate
+pip install --upgrade pip
 pip install wheel
-pip install -r requirements_ubuntu1804.txt
+pip install -r requirements_ubuntu.txt
 pip install -e .
 mkdir logs
 ```
 or set env variable RL_LOGDIR to specify logs directory.
 
+For Windows:
+(Many of the things below can be more conviniently installed using Chocolatey package manager for Windows)
+- Install git (with Unix tools).
+- Install VisualStudio Community Edition 2019 with MS Build Tools 2015, 2017, 2019.
+- Install swig.
+- Install ffmpeg.
+- Install cuda and corresponding version of pytorch (after activating virtual env). https://pytorch.org/.
+
+Then:
+
+```bash
+git clone https://github.com/bhatiaabhinav/RL-v2.git
+cd RL-v2
+python3 -m venv env
+./env/Scripts/activate
+pip install --upgrade pip
+pip install wheel
+pip install -r requirements_windows.txt
+pip install -e .
+mkdir logs
+```
+
 ---
 
 ## Usage
 
-Activate env:
+Activate virtual env:
+
 ```bash
 cd RL-v2
 source env/bin/activate
+```
+or for Windows
+```bash
+./env/Scripts/activate
 ```
 
 Then:
@@ -40,6 +69,8 @@ A [Weights & Biases](https://wandb.ai) account is needed to run the module. It i
 On running the module for the first time, it will ask for the authorization key of the account. Once, that is set, all the future runs will be logged to that account.
 
 A run will be recorded by the name `{algo_id}_{algo_suffix}` in the `{env_name}` project in the wandb account. On starting a run, the link to view it in the wandb dashboard will be printed in the beginning.
+
+Note for Windows: If facing some problems regarding wandb permissions, you can try running in admin command prompt or admin powershell.
 
 ### Logs
 
