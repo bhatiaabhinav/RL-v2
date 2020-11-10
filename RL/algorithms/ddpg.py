@@ -42,14 +42,14 @@ class DDPG(StandardEnvWrapAlgo):
                                                ddpg_agent.target_q, 1, args.polyak, args.min_explore_steps))
 
         self.register_agent(StatsRecordingAgent("StatsRecorder", self, reward_scaling=args.reward_scaling, cost_scaling=args.cost_scaling, record_unscaled=args.record_unscaled,
-                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip))  # type: StatsRecordingAgent
+                                                gamma=args.gamma, cost_gamma=args.cost_gamma, record_undiscounted=not args.record_discounted, frameskip=self.frameskip, RPE_av_over=args.RPE_av_over, RPS_av_over=args.RPS_av_over))  # type: StatsRecordingAgent
 
         self.register_agent(ConsolePrintAgent("ConsolePrinter", self, lambda: {
             'Steps': self.manager.num_steps,
             'Episodes': self.manager.num_episodes,
             'Len': self.manager.num_episode_steps,
             'R': wandb.run.history._data['Episode/Reward'],
-            'R(100)': wandb.run.history._data['Average/RPE (Last 100)'],
+            f'R({args.RPE_av_over})': wandb.run.history._data[f'Average/RPE (Last {args.RPE_av_over})'],
             'loss': wandb.run.history._data['DDPG/Loss'],
             'mb_v': wandb.run.history._data['DDPG/Value'],
             'noise': wandb.run.history._data['DDPG/Noise']
