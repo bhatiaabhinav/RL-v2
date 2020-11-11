@@ -75,7 +75,7 @@ class DQNModel(nn.Module):
 
 
 class DQNCoreAgent(RL.Agent):
-    def __init__(self, name: str, algo: RL.Algorithm, convs: List, hidden_layers: List, train_freq: int, sgd_steps: int, mb_size: int, double_dqn: bool, dueling_dqn: bool, gamma: float, nsteps: int, td_clip: float, grad_clip: float, lr: float, epsilon: float, noisy_explore: bool, eval_mode: bool, no_train_for_steps: int, exp_buffer: ExperienceBuffer, policy_temperature: float = 0):
+    def __init__(self, name: str, algo: RL.Algorithm, convs: List, hidden_layers: List, train_freq: int, sgd_steps: int, mb_size: int, double_dqn: bool, dueling_dqn: bool, dqn_mse_loss: bool, gamma: float, nsteps: int, td_clip: float, grad_clip: float, lr: float, epsilon: float, noisy_explore: bool, eval_mode: bool, no_train_for_steps: int, exp_buffer: ExperienceBuffer, policy_temperature: float = 0):
         super().__init__(name, algo, supports_multiple_envs=False)
         self.convs = convs
         self.hidden_layers = hidden_layers
@@ -84,6 +84,7 @@ class DQNCoreAgent(RL.Agent):
         self.mb_size = mb_size
         self.double_dqn = double_dqn
         self.dueling_dqn = dueling_dqn
+        self.dqn_mse_loss = dqn_mse_loss
         self.noisy_explore = noisy_explore
         self.gamma = gamma
         self.nsteps = nsteps
@@ -227,8 +228,11 @@ class DQNCoreAgent(RL.Agent):
         desired_q = q_detached
 
         '''loss and gradient clip'''
-        loss = F.smooth_l1_loss(q, torch.from_numpy(desired_q).to(device))
-        # loss = F.mse_loss(q, torch.from_numpy(desired_q).to(device))
+        if self.dqn_mse_loss:
+            loss = F.mse_loss(q, torch.from_numpy(desired_q).to(device))
+        else:
+            loss = F.smooth_l1_loss(q, torch.from_numpy(desired_q).to(device))
+        loss = F.mse_loss(q, torch.from_numpy(desired_q).to(device))
         loss.backward()
         if self.grad_clip is not None:
             ldebug and logger.debug('Doing grad clipping')

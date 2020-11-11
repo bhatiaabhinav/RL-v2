@@ -62,6 +62,7 @@ p.add_argument('--ep', type=float, default=0.1)
 p.add_argument('--ep_anneal_steps', type=int, default=1000000)
 p.add_argument('--double_dqn', action='store_true')
 p.add_argument('--dueling_dqn', action='store_true')
+p.add_argument('--dqn_mse_loss', action='store_true')
 p.add_argument('--noisy_explore', action='store_true')
 p.add_argument('--dqn_ptemp', type=float, default=0)
 
