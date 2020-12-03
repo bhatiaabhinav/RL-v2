@@ -31,4 +31,5 @@ class SeedingAgent(RL.Agent):
             self.env.action_space.seed(self.seed)
 
     def pre_episode(self):
-        self.env.seed(self.seed + self.manager.num_episodes)
+        # self.env.seed(self.seed + self.manager.num_episodes)
+        pass
