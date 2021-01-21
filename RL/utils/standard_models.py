@@ -3,7 +3,7 @@ import logging
 import torch
 from torch import nn
 
-from RL.utils.util_fns import conv2d_shape_out, convT2d_shape_out
+from RL.utils.util_fns import conv2d_shape_out, convT2d_shape_out, get_symmetric_deconvs
 
 
 class FFModel(nn.Module):
@@ -109,3 +109,64 @@ class FFModel(nn.Module):
         for deconv_layer in self.deconv_layers:
             x = deconv_layer(x)
         return x
+
+
+class Encoder(nn.Module):
+    def __init__(self, input_shape, convs, embedding_size):
+        super().__init__()
+        self.encoder = FFModel(input_shape, convs, [
+                               embedding_size], apply_act_output=True)
+
+    def forward(self, x):
+        return self.encoder(x)
+
+
+class DecoderSymmetric(nn.Module):
+    def __init__(self, input_shape, convs, embedding_size):
+        super().__init__()
+        if len(input_shape) > 1:
+            deconvs, deconv_output_shape, convs_output_shape, flattened_shape, info = get_symmetric_deconvs(
+                input_shape, convs)
+            print(info)
+            assert input_shape == deconv_output_shape, f"this conv configuration is not invertible, {input_shape}, {deconv_output_shape}"
+            self.decoder = FFModel([embedding_size], [], [
+                                   flattened_shape[0]], unflatten_shape=convs_output_shape, deconvs=deconvs)
+        else:
+            self.decoder = FFModel([embedding_size], [], [
+                                   input_shape[0]])
+
+    def forward(self, x):
+        return self.decoder(x)
+
+
+class AutoEncoder(nn.Module):
+    def __init__(self, input_shape, convs, embedding_size):
+        super().__init__()
+        self.encoder = Encoder(input_shape, convs, embedding_size)
+        self.decoder = DecoderSymmetric(input_shape, convs, embedding_size)
+
+    def encode(self, x):
+        return self.encoder(x)
+
+    def decode(self, x):
+        return self.decoder(x)
+
+    def forward(self, x):
+        return self.decode(self.encode(x))
+
+
+class Discriminator(nn.Module):
+    def __init__(self, input_shape, convs, embedding_size):
+        super().__init__()
+        # double the number of channels in conv1.. because input channels are doubled.
+        if len(input_shape) > 1:
+            convs = [(2 * convs[0][0], *convs[0][1:]), *convs[1:]]
+            input_shape = (2 * input_shape[0], *input_shape[1:])
+            # print(input_shape)
+        self.discriminator = FFModel(input_shape, convs, [
+                                     embedding_size, 2], act_fn_callable=lambda: nn.LeakyReLU())
+
+    def forward(self, x1, x2):
+        x_cat = torch.cat((x1, x2), dim=1)
+        disc_logits = self.discriminator(x_cat)
+        return disc_logits
