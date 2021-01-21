@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name="RL-v2",
-    version="3.1.0",
+    version="3.2.0",
     author="Abhinav Bhatia",
     author_email="abhinav.bhatia.me@gmail.com",
     description=("Some RL algorithms"),
