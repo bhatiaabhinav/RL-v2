@@ -104,6 +104,7 @@ By default the module will use Nvidia cuda if a GPU is available. To disable GPU
 - Soft (Boltzman) policy. Set temperature using `--dqn_ptemp` (default=0).
 - `--ep` (default=0.1) Value of epsilon in epsilon-greedy action selection.
 - `-ep_anneal_steps` (default=1000000). Numner of steps over which the epsilon should be annealed from 1 to `ep`. The annealing begins after `min_explore_steps` phase. `min_explore_steps` is explained below.
+- By default, huber loss is used for the Q network. Specify `--dqn_mse_loss` to change to change to mse loss.
 
 ### For DDPG
 - DDPG Vanilla (but without OH noise exploration)
@@ -113,6 +114,14 @@ By default the module will use Nvidia cuda if a GPU is available. To disable GPU
 ### For SAC
 - SAC Vanilla
 - Adaptive alpha to maintain constant entropy (turned on default). Specify initial alpha `--sac_alpha` (default 0.2). To turn off adaptive alpha, specify `--fix_alpha` flag.
+- N-Step SAC. Specify `--nsteps` parameter (default=1).
+
+Note: DDPG and SAC algorithms soft-copy Q net params to target net
+
+### For SAC Discrete
+- SAC Vanilla
+- Adaptive alpha to maintain constant entropy (turned on default). Specify initial alpha `--sac_alpha` (default 0.2). To turn off adaptive alpha, specify `--fix_alpha` flag. In adaptive alpha, alpha never falls below `sac_alpha` value i.e. it serves as minimum value of alpha.
+- By default, huber loss is used for the Q network. Specify `--dqn_mse_loss` to change to change to mse loss.
 - N-Step SAC. Specify `--nsteps` parameter (default=1).
 
 Note: DDPG and SAC algorithms soft-copy Q net params to target net
@@ -138,7 +147,7 @@ Note: DDPG and SAC algorithms soft-copy Q net params to target net
 
 
 ### General
-- `--seed`. None by default, leading to inderministic behavior. If set to some value, the following get seeded with the specified value: python's random module, torch and numpy. Also, every episode is seeded deterministically (= speficied seed + episode ID) so that episodes are comparable across runs.
+- `--seed`. None by default, leading to inderministic behavior. If set to some value, the following get seeded with the specified value: python's random module, torch and numpy.
 - `--reward_scaling` (default=1). Scales rewards for training. The logs & graphs also record scaled returns, unless `--record_unscaled` flag is specified.
 - `record_discounted` flag. When set, causes logs & graphs to record discounted returns per episode, instead of sum of rewards per episode.
 - `--model_save_freq` (default=1000000). The model is saved every these many steps to checkpoints directory
@@ -203,7 +212,7 @@ python -m RL BipedalWalker-v3 SAC 1000000 --algo_suffix=T200_gc1 --seed=0 --hidd
 
 #### On a discrete action space domain:
 ```bash
-python -m RL LunarLander-v2 SAC 200000 --algo_suffix=T500_3step --artificial_timelimit=500 --seed=0 --hiddens 64 32 --train_freq=1 --nsteps=3 --min_explore_steps=10000 --no_render --monitor_video_freq=20
+python -m RL LunarLander-v2 SACDiscrete 200000 --algo_suffix=T500_3step --artificial_timelimit=500 --seed=0 --hiddens 64 32 --train_freq=1 --nsteps=3 --min_explore_steps=10000 --dqn_mse_loss --no_render --monitor_video_freq=20
 ```
 
 ### Hyperparams
