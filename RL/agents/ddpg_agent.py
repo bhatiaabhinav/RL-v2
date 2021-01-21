@@ -87,7 +87,7 @@ class DDPGAgent(RL.Agent):
         self.a_lr = a_lr
         self.no_train_for_steps = no_train_for_steps
         self.exp_buffer = exp_buffer
-        self._loss, self._mb_v, self._noise = 0, 0, 0
+        self._loss, self._a_loss, self._mb_v, self._noise = 0, 0, 0, 0
 
         obs_space = self.env.observation_space
         ac_space = self.env.action_space
@@ -173,11 +173,13 @@ class DDPGAgent(RL.Agent):
             self.optim_a.step()
 
             self._loss = critics_loss.cpu().detach().item()
+            self._a_loss = actor_loss.item()
             self._mb_v = mean_v.cpu().detach().item()
 
         if (self.manager.num_steps - 1) % 1000 == 0:
             wandb.log({
                 'DDPG/Loss': self._loss,
+                'DDPG/A_Loss': self._a_loss,
                 'DDPG/Value': self._mb_v,
                 'DDPG/Noise': self._noise,
                 'DDPG/Sigma': self.a.sigma
@@ -193,6 +195,7 @@ class DDPGAgent(RL.Agent):
 
         wandb.log({
             'DDPG/Loss': self._loss,
+            'DDPG/A_Loss': self._a_loss,
             'DDPG/Value': self._mb_v,
             'DDPG/Noise': self._noise,
             'DDPG/Sigma': self.a.sigma
