@@ -232,7 +232,6 @@ class DQNCoreAgent(RL.Agent):
             loss = F.mse_loss(q, torch.from_numpy(desired_q).to(device))
         else:
             loss = F.smooth_l1_loss(q, torch.from_numpy(desired_q).to(device))
-        loss = F.mse_loss(q, torch.from_numpy(desired_q).to(device))
         loss.backward()
         if self.grad_clip is not None:
             ldebug and logger.debug('Doing grad clipping')
