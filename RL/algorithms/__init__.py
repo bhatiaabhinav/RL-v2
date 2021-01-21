@@ -1,7 +1,7 @@
 from RL import argparser as p
 
 # Algos in these files will get registered on doing `import RL.algorithms`
-from . import ddpg, dqn, random, sac  # noqa
+from . import ddpg, dqn, random, sac, sac_discrete  # noqa
 
 # standard wrap args
 p.add_argument('--frameskip', default=1, type=int)

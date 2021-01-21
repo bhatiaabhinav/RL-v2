@@ -99,7 +99,7 @@ class SACAgent(RL.Agent):
         self.fix_alpha = fix_alpha
         if not fix_alpha:
             self.logalpha.requires_grad = True
-        self._loss, self._mb_v, self._mb_ent = 0, 0, 0
+        self._loss, self._a_loss, self._mb_v, self._mb_ent = 0, 0, 0, 0
 
         obs_space = self.env.observation_space
         ac_space = self.env.action_space
@@ -213,12 +213,14 @@ class SACAgent(RL.Agent):
                 self.optim_alpha.step()
 
             self._loss = critics_loss.item()
+            self._a_loss = actor_loss.item()
             self._mb_v = mean_v.item()
             self._mb_ent = entropy.item()
 
         if (self.manager.num_steps - 1) % 1000 == 0:
             wandb.log({
                 'SAC/Loss': self._loss,
+                'SAC/A_Loss': self._a_loss,
                 'SAC/Value': self._mb_v,
                 'SAC/Entropy': self._mb_ent,
                 'SAC/Alpha': self.alpha.item()
@@ -227,6 +229,7 @@ class SACAgent(RL.Agent):
     def post_episode(self):
         wandb.log({
             'SAC/Loss': self._loss,
+            'SAC/A_Loss': self._a_loss,
             'SAC/Value': self._mb_v,
             'SAC/Entropy': self._mb_ent,
             'SAC/Alpha': self.alpha.item()
