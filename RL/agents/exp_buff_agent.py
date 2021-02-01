@@ -1,6 +1,8 @@
+from RL.utils.util_fns import update_mean_std
 import logging
 import sys
 from typing import List
+import itertools
 
 import numpy as np
 
@@ -12,21 +14,23 @@ ldebug = logger.isEnabledFor(logging.DEBUG)
 
 
 class Experience:
-    def __init__(self, state, action, reward, done, info, next_state, cost=0):
+    def __init__(self, state, action, reward, done, info, next_state, cost=0, **kwargs):
         self.state = state
         self.action = action
         self.reward = reward
-        self.cost = cost
         self.done = done
         self.info = info
         self.next_state = next_state
+        self.cost = cost
+        self.other_args = kwargs
         self.id = 0
 
     def __sizeof__(self):
         return sys.getsizeof(self.state) + sys.getsizeof(self.action) + \
             sys.getsizeof(self.reward) + sys.getsizeof(self.done) + \
-            sys.getsizeof(self.info) + sys.getsizeof(self.next_state) + \
-            sys.getsizeof(self.cost)
+            sum([sys.getsizeof(v) for v in self.info.values()]) + sys.getsizeof(self.next_state) + \
+            sys.getsizeof(self.cost) + sum([sys.getsizeof(v)
+                                            for v in self.other_args.values()]) + sys.getsizeof(self.id)
 
 
 class ExperienceBuffer:
@@ -38,6 +42,15 @@ class ExperienceBuffer:
         self.count = 0
         self.size_in_bytes = size_in_bytes
         self.next_index = 0
+        self.reward_stats = (0, 0, 0)
+
+    @property
+    def reward_mean(self):
+        return self.reward_stats[0]
+
+    @property
+    def reward_std(self):
+        return self.reward_stats[1]
 
     def __len__(self):
         return self.count
@@ -50,12 +63,24 @@ class ExperienceBuffer:
             logging.getLogger(__name__).info('Initializing experience buffer of length {0}. Est. memory: {1} MB'.format(
                 self.buffer_length, self.buffer_length * sys.getsizeof(exp) // (1024 * 1024)))
             self.buffer = [None] * self.buffer_length
+        if self.count == self.buffer_length:
+            self.reward_stats = update_mean_std(
+                *self.reward_stats, self.buffer[self.next_index].reward, remove=True)
+        self.reward_stats = update_mean_std(*self.reward_stats, exp.reward)
         self.buffer[self.next_index] = exp
         self.next_index = (self.next_index + 1) % self.buffer_length
         self.count = min(self.count + 1, self.buffer_length)
+        assert self.count == self.reward_stats[-1]
         global ids
         self.id = ids
         ids += 1
+
+    def to_tuples(self, exps, return_costs=False):
+        for exp in exps:
+            if return_costs:
+                yield (exp.state, exp.action, exp.reward, exp.done, exp.info, exp.next_state, exp.cost, *exp.other_args.values())
+            else:
+                yield (exp.state, exp.action, exp.reward, exp.done, exp.info, exp.next_state, *exp.other_args.values())
 
     def random_experiences(self, count):
         indices = np.random.randint(0, self.count, size=count)
@@ -64,54 +89,30 @@ class ExperienceBuffer:
 
     def random_experiences_unzipped(self, count, return_costs=False):
         exps = self.random_experiences(count)
-        if return_costs:
-            list_of_exp_tuples = [(exp.state, exp.action, exp.reward,
-                                   exp.cost, exp.done, exp.info, exp.next_state) for exp in exps]
-        else:
-            list_of_exp_tuples = [
-                (exp.state, exp.action, exp.reward, exp.done, exp.info, exp.next_state) for exp in exps]
-        return tuple(np.asarray(tup) for tup in zip(*list_of_exp_tuples))
+        ans = tuple(np.asarray(tup) for tup in zip(
+            *self.to_tuples(exps, return_costs=return_costs)))
+        return ans
 
     def random_rollouts(self, count, rollout_size):
         starting_indices = np.random.randint(
             0, self.count - rollout_size, size=count)
-        rollouts = []
         for i in starting_indices:
-            rollout = self.buffer[i:i + rollout_size]
-            rollouts.append(rollout)
-        return np.array(rollouts)
+            yield self.buffer[i:i + rollout_size]
 
-    # def random_rollouts_unzipped(self, count, rollout_size, dones_as_ints=True, return_costs=False):
-    #     starting_indices = np.random.randint(
-    #         0, self.count - rollout_size, size=count)
-    #     states, actions, rewards, dones, infos, next_states = [], [], [], [], [], []
-    #     if return_costs:
-    #         costs = []
-    #     for i in starting_indices:
-    #         rollout = self.buffer[i:i + rollout_size]
-    #         states.append([exp.state for exp in rollout])
-    #         actions.append([exp.action for exp in rollout])
-    #         rewards.append([exp.reward for exp in rollout])
-    #         dones.append(
-    #             [int(exp.done) if dones_as_ints else exp.done for exp in rollout])
-    #         infos.append([exp.info for exp in rollout])
-    #         next_states.append([exp.next_state for exp in rollout])
-    #         if return_costs:
-    #             costs.append([exp.cost for exp in rollout])
-    #     states, actions, rewards, dones, infos, next_states = np.asarray(states), np.asarray(
-    #         actions), np.asarray(rewards), np.asarray(dones), np.asarray(infos), np.asarray(next_states)
-    #     if return_costs:
-    #         costs = np.asarray(costs)
-    #     if return_costs:
-    #         return_items = (states, actions, rewards, costs,
-    #                         dones, infos, next_states)
-    #     else:
-    #         return_items = (states, actions, rewards,
-    #                         dones, infos, next_states)
-    #     for item in return_items:
-    #         assert list(item.shape[0:2]) == [count, rollout_size], "item: {0}, shape: {1}, expected: {2}".format(
-    #             item, list(item.shape), [count, rollout_size])
-    #     return return_items
+    def random_rollouts_unzipped(self, count, rollout_size, return_costs=False, return_flattened=False):
+        '''batch major'''
+        rollouts = self.random_rollouts(count, rollout_size)
+        rollouts_flattened = itertools.chain(*rollouts)
+        # if linearized `states` is of shape: [count*rollout, 1, 84, 84]
+        # need to reshape it to [count, rollout, 1, 84, 84]
+        rollouts_unzipped_flattened = tuple(np.asarray(tup) for tup in zip(
+            *self.to_tuples(rollouts_flattened, return_costs=return_costs)))  # states, actions, rewards, dones, infos, next_states, etc.
+        if return_flattened:
+            return rollouts_unzipped_flattened
+        else:
+            rollouts_unzipped = tuple(tup.reshape(
+                count, rollout_size, *tup.shape[1:]) for tup in rollouts_unzipped_flattened)
+            return rollouts_unzipped
 
     def random_states(self, count):
         experiences = list(self.random_experiences(count))
